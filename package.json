@@ -1,0 +1,28 @@
+{
+  "name": "questjob",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "start:dev": "nodemon server.js",
+    "start:cron": "node cronJob.js",
+    "start:cron:dev": "nodemon cronJob.js",
+    "start:prod": "pm2 start server.js --name quest-tracker",
+    "start:cron:prod": "pm2 start cronJob.js --name quest-cron"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.5.1",
+    "node-cron": "^3.0.3",
+    "winston": "^3.13.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
