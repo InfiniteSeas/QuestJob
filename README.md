@@ -1,3 +1,5 @@
+Here's the updated README with the new API endpoints added:
+
 # Quest Tracker Service
 
 This project is a Node.js application that tracks quests and rewards for users. It uses Express.js for the server, Mongoose for MongoDB interaction, and Winston for logging.
@@ -9,6 +11,8 @@ This project is a Node.js application that tracks quests and rewards for users. 
 - Retrieve all quests and their statuses for a wallet.
 - Aggregate and retrieve total reward points for all wallets.
 - Scheduled cron jobs to update quest statuses.
+- Retrieve all NFTs' image URLs and account addresses.
+- Retrieve the image URL for a specific account address.
 
 ## Prerequisites
 
@@ -93,4 +97,16 @@ To run the cron job locally, you can use the `node-cron` package. Ensure you hav
 - **Method**: `GET`
 - Triggered manually or via a scheduler to update quest statuses.
 
+### Get All NFTs' Image URLs and Account Addresses
 
+- **URL**: `/nfts`
+- **Method**: `GET`
+- **Description**: Retrieves all NFTs' image URLs and account addresses.
+
+### Get Image URL by Account Address
+
+- **URL**: `/nft-by-address`
+- **Method**: `GET`
+- **Query Parameters**:
+  - `address`: Account address
+- **Description**: Retrieves the image URL for the specified account address.
