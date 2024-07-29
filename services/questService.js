@@ -10,11 +10,12 @@ const getTimestamp = (offsetDays = 0, offsetHours = 0, offsetMinutes = 0) => {
   date.setDate(date.getDate() + offsetDays);
   date.setHours(date.getHours() + offsetHours);
   date.setMinutes(date.getMinutes() + offsetMinutes);
-  return Math.floor(date.getTime() / 1000);
+  return date.getTime(); // Return time in milliseconds
 };
 
-const startAt = getTimestamp(-1, 9, 59); // 9:59:00 from the last day
-const endedAt = getTimestamp(0, 9, 58, 59); // 9:58:59 today
+// Update these times to match the new reset period
+const startAt = getTimestamp(-1, 0, 1); // 12:01 AM from the last day
+const endedAt = getTimestamp(0, 0, 0, 59); // 12:00:59 AM toda
 
 const getRewardPoints = (questName) => {
   switch (questName) {
@@ -32,6 +33,14 @@ const getRewardPoints = (questName) => {
       return 0;
   }
 };
+
+async function isQuestCompletedToday(playerAddr, questName) {
+  const questProgress = await QuestProgress.findOne({
+    wallet: playerAddr,
+    questName,
+  });
+  return questProgress ? questProgress.completedToday : false;
+}
 
 async function updateQuestProgressInDB(
   playerAddr,
@@ -52,21 +61,33 @@ async function updateQuestProgressInDB(
       completedToday: completed,
       totalRewardPoints: completed ? points : 0,
     });
-  } else {
+    logger.info(
+      `Created new quest progress for ${playerAddr} - ${questName}: completedToday=${completed} with ${points} points`
+    );
+  } else if (!questProgress.completedToday) {
     questProgress.completedToday = completed;
     if (completed) {
       questProgress.totalRewardPoints += points;
     }
     await questProgress.save();
+    logger.info(
+      `Updated quest progress for ${playerAddr} - ${questName}: completedToday=${completed} with ${points} points`
+    );
+  } else {
+    logger.info(
+      `No update needed for ${playerAddr} - ${questName} as it is already completed today`
+    );
   }
-  logger.info(
-    `Quest progress updated for ${playerAddr} - ${questName}: ${
-      completed ? "completed" : "not completed"
-    } with ${points} points`
-  );
 }
 
 async function checkCraftForDailyQuest({ playerAddr }) {
+  if (await isQuestCompletedToday(playerAddr, "craft_ships")) {
+    logger.info(
+      `Quest 'craft_ships' already completed today for ${playerAddr}`
+    );
+    return;
+  }
+
   try {
     const { data: craftRecords } = await axios.get(
       `${INDEXER_BASE_URL}/contractEvents/getShipProductionCompletedEvents`,
@@ -90,6 +111,12 @@ async function checkCraftForDailyQuest({ playerAddr }) {
 }
 
 async function checkFaucetForDailyQuest({ playerAddr }) {
+  if (await isQuestCompletedToday(playerAddr, "claim_energy")) {
+    logger.info(
+      `Quest 'claim_energy' already completed today for ${playerAddr}`
+    );
+    return;
+  }
   try {
     const { data: faucetRecords } = await axios.get(
       `${INDEXER_BASE_URL}/contractEvents/getFaucetRequestedEvents`,
@@ -120,6 +147,10 @@ async function checkFaucetForDailyQuest({ playerAddr }) {
 }
 
 async function checkCombatToPVEForDailyQuest({ playerAddr }) {
+  if (await isQuestCompletedToday(playerAddr, "battle_pve")) {
+    logger.info(`Quest 'battle_pve' already completed today for ${playerAddr}`);
+    return;
+  }
   try {
     const { data: combats } = await axios.get(
       `${INDEXER_BASE_URL}/contractEvents/getPlayerVsEnvironmentEvents`,
@@ -144,6 +175,10 @@ async function checkCombatToPVEForDailyQuest({ playerAddr }) {
 }
 
 async function checkCombatToPVPForDailyQuest({ playerAddr }) {
+  if (await isQuestCompletedToday(playerAddr, "battle_pvp")) {
+    logger.info(`Quest 'battle_pvp' already completed today for ${playerAddr}`);
+    return;
+  }
   try {
     const { data: combats } = await axios.get(
       `${INDEXER_BASE_URL}/contractEvents/getPlayerVsPlayerEvents`,

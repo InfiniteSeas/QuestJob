@@ -28,8 +28,20 @@ const updateQuestProgress = async () => {
   }
 };
 
+const resetQuestProgress = async () => {
+  try {
+    await QuestProgress.updateMany({}, { $set: { completedToday: false } });
+    logger.info("Reset completedToday for all quests");
+  } catch (error) {
+    logger.error(`Error resetting quest progress: ${error.message}`);
+  }
+};
+
+// Schedule the cron job to run every day at 12:01 AM UTC
+cron.schedule("1 0 * * *", resetQuestProgress);
+
 // Schedule the cron job to run every day at 10 PM UTC
 // cron.schedule("0 22 * * *", updateQuestProgress);
 
-// Schedule the cron job to run every 5 minutes for testing
-cron.schedule("*/5 * * * *", updateQuestProgress);
+// Schedule the cron job to run every 10 minutes for testing
+cron.schedule("*/20 * * * *", updateQuestProgress);

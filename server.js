@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const cors = require("cors");
 const dbConnect = require("./lib/dbConnect");
 const QuestProgress = require("./models/QuestProgress");
 const logger = require("./lib/logger");
@@ -11,7 +12,70 @@ const {
 } = require("./services/questService");
 const app = express();
 
+const NFT = require("./models/NFT"); // Ensure you import the NFT model
+
+const port = process.env.PORT || 3000;
+
+// Allow requests from any subdomain of galxe.com
+const allowedOrigins = [
+  /\.galxe\.com$/,
+  /\.vercel\.app$/,
+  /\.localhost\$/,
+  /\.infiniteseas\.io$/,
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.some((pattern) => pattern.test(origin))) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+};
+
+app.use(cors(corsOptions));
+
+// Middleware to parse JSON request bodies
+app.use(express.json());
+
 dbConnect();
+
+app.get("/", async (req, res) => {
+  res.status(200).json({ status: true });
+});
+
+app.get("/nfts", async (req, res) => {
+  try {
+    const nfts = await NFT.find({}, "image_url account_address"); // Retrieve only image_url and account_address fields
+    res.json(nfts);
+  } catch (error) {
+    logger.error(`Error fetching NFTs: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add this endpoint in your existing Express app
+
+app.get("/nft-by-address", async (req, res) => {
+  const { address } = req.query;
+
+  if (!address) {
+    return res.status(400).json({ error: "Account address is required" });
+  }
+
+  try {
+    const nft = await NFT.findOne({ account_address: address }, "image_url");
+    if (nft) {
+      res.json({ image_url: nft.image_url });
+    } else {
+      res.status(404).json({ error: "NFT not found for the given address" });
+    }
+  } catch (error) {
+    logger.error(`Error fetching NFT for address ${address}: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 app.get("/check-quest", async (req, res) => {
   const { wallet, quest } = req.query;
@@ -36,6 +100,17 @@ app.get("/check-quest", async (req, res) => {
 
 app.get("/get-all-quests", async (req, res) => {
   const { wallet } = req.query;
+
+  try {
+    await checkCraftForDailyQuest({ playerAddr: wallet });
+    await checkFaucetForDailyQuest({ playerAddr: wallet });
+    await checkCombatToPVEForDailyQuest({ playerAddr: wallet });
+    await checkCombatToPVPForDailyQuest({ playerAddr: wallet });
+    logger.info("Indexer pull completed successfully");
+  } catch (error) {
+    logger.error(`Error running indexer pull: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
 
   try {
     const quests = ["craft_ships", "battle_pve", "battle_pvp", "claim_energy"];
@@ -129,14 +204,6 @@ app.get("/run-cron", async (req, res) => {
   }
 });
 
-app.listen(3000, () => {
-  logger.info("Server running on port 3000");
-});
-
-app.listen(3000, () => {
-  logger.info("Server running on port 3000");
-});
-
-app.listen(3000, () => {
-  logger.info("Server running on port 3000");
+app.listen(port, () => {
+  logger.info(`Server running on port ${port}`);
 });
