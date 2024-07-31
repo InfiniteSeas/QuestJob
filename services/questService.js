@@ -5,17 +5,33 @@ const logger = require("../lib/logger");
 
 const INDEXER_BASE_URL = process.env.INDEXER_BASE_URL || "";
 
-const getTimestamp = (offsetDays = 0, offsetHours = 0, offsetMinutes = 0) => {
-  const date = new Date();
-  date.setDate(date.getDate() + offsetDays);
-  date.setHours(date.getHours() + offsetHours);
-  date.setMinutes(date.getMinutes() + offsetMinutes);
-  return date.getTime(); // Return time in milliseconds
+const getUnixTimestamp = (
+  year,
+  month,
+  day,
+  hour = 0,
+  minute = 0,
+  second = 0
+) => {
+  return Date.UTC(year, month - 1, day, hour, minute, second);
 };
 
-// Update these times to match the new reset period
-const startAt = getTimestamp(-1, 0, 1); // 12:01 AM from the last day
-const endedAt = getTimestamp(0, 0, 0, 59); // 12:00:59 AM toda
+// Current date
+const currentDate = new Date();
+const currentYear = currentDate.getUTCFullYear();
+const currentMonth = currentDate.getUTCMonth() + 1; // getUTCMonth() returns month from 0-11
+const currentDay = currentDate.getUTCDate();
+
+// Adjusted times to match the new reset period
+const startAt = getUnixTimestamp(currentYear, currentMonth, currentDay, 0, 1); // 12:01 AM today UTC
+const endedAt = getUnixTimestamp(
+  currentYear,
+  currentMonth,
+  currentDay + 1,
+  0,
+  0,
+  59
+); // 12:00:59 AM tomorrow UTC
 
 const getRewardPoints = (questName) => {
   switch (questName) {
@@ -66,6 +82,7 @@ async function updateQuestProgressInDB(
     );
   } else if (!questProgress.completedToday) {
     questProgress.completedToday = completed;
+    await questProgress.save();
     if (completed) {
       questProgress.totalRewardPoints += points;
     }

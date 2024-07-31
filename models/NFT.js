@@ -16,6 +16,7 @@ const nftSchema = new mongoose.Schema(
     outfit: { type: Number, required: true },
     accessories: { type: Number, required: true },
     account_address: { type: String, required: true },
+    playerId: { type: String, required: false },
   },
   {
     timestamps: true,

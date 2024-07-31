@@ -47,7 +47,7 @@ app.get("/", async (req, res) => {
 
 app.get("/nfts", async (req, res) => {
   try {
-    const nfts = await NFT.find({}, "image_url account_address"); // Retrieve only image_url and account_address fields
+    const nfts = await NFT.find({}, "image_url account_address playerId"); // Retrieve only image_url and account_address fields
     res.json(nfts);
   } catch (error) {
     logger.error(`Error fetching NFTs: ${error.message}`);
@@ -57,22 +57,24 @@ app.get("/nfts", async (req, res) => {
 
 // Add this endpoint in your existing Express app
 
-app.get("/nft-by-address", async (req, res) => {
-  const { address } = req.query;
+app.get("/nft-by-playerId", async (req, res) => {
+  const { playerId } = req.query;
 
-  if (!address) {
-    return res.status(400).json({ error: "Account address is required" });
+  if (!playerId) {
+    return res.status(400).json({ error: "Account playerId is required" });
   }
 
   try {
-    const nft = await NFT.findOne({ account_address: address }, "image_url");
+    const nft = await NFT.findOne({ playerId: playerId }, "image_url");
     if (nft) {
       res.json({ image_url: nft.image_url });
     } else {
-      res.status(404).json({ error: "NFT not found for the given address" });
+      res.status(404).json({ error: "NFT not found for the given playerId" });
     }
   } catch (error) {
-    logger.error(`Error fetching NFT for address ${address}: ${error.message}`);
+    logger.error(
+      `Error fetching NFT for playerId ${playerId}: ${error.message}`
+    );
     res.status(500).json({ error: error.message });
   }
 });
@@ -151,11 +153,14 @@ app.get("/get-wallets-and-points", async (req, res) => {
 });
 
 // Endpoint to add a new wallet to the database
+// Updated Endpoint to add a new wallet to the database
 app.post("/add-wallet", async (req, res) => {
-  const { wallet } = req.body;
+  const { wallet, playerId } = req.body;
 
-  if (!wallet) {
-    return res.status(400).json({ error: "Wallet address is required" });
+  if (!wallet || !playerId) {
+    return res
+      .status(400)
+      .json({ error: "Wallet address and Player ID are required" });
   }
 
   try {
@@ -165,7 +170,7 @@ app.post("/add-wallet", async (req, res) => {
       return res.status(400).json({ error: "Wallet already exists" });
     }
 
-    // Creating an initial entry for the wallet
+    // Creating an initial entry for the wallet in QuestProgress
     const quests = ["craft_ships", "battle_pve", "battle_pvp", "claim_energy"];
     for (const quest of quests) {
       await QuestProgress.create({
@@ -176,33 +181,59 @@ app.post("/add-wallet", async (req, res) => {
       });
     }
 
-    logger.info(`Wallet ${wallet} added successfully`);
-    res.status(201).json({ message: "Wallet added successfully" });
+    // Updating the playerId in the NFT collection
+    const nft = await NFT.findOne({ account_address: wallet });
+    if (nft) {
+      nft.playerId = playerId;
+      await nft.save();
+    } else {
+      return res
+        .status(404)
+        .json({ error: "NFT not found for the given address" });
+    }
+
+    logger.info(
+      `Wallet ${wallet} and Player ID ${playerId} added successfully`
+    );
+    res
+      .status(201)
+      .json({ message: "Wallet and Player ID added successfully" });
   } catch (error) {
-    logger.error(`Error adding wallet ${wallet}: ${error.message}`);
+    logger.error(
+      `Error adding wallet ${wallet} and Player ID ${playerId}: ${error.message}`
+    );
     res.status(500).json({ error: error.message });
   }
 });
 
 // Endpoint to trigger the cron job
-app.get("/run-cron", async (req, res) => {
-  try {
-    const wallets = await QuestProgress.distinct("wallet");
+// app.get("/run-cron", async (req, res) => {
+//   try {
+//     const wallets = await QuestProgress.distinct("wallet");
 
-    for (const wallet of wallets) {
-      await checkCraftForDailyQuest({ playerAddr: wallet });
-      await checkFaucetForDailyQuest({ playerAddr: wallet });
-      await checkCombatToPVEForDailyQuest({ playerAddr: wallet });
-      await checkCombatToPVPForDailyQuest({ playerAddr: wallet });
-    }
+//     for (const wallet of wallets) {
+//       await checkCraftForDailyQuest({ playerAddr: wallet });
+//       await checkFaucetForDailyQuest({ playerAddr: wallet });
+//       await checkCombatToPVEForDailyQuest({ playerAddr: wallet });
+//       await checkCombatToPVPForDailyQuest({ playerAddr: wallet });
+//     }
 
-    logger.info("Cron job completed successfully");
-    res.status(200).send("Cron job completed successfully");
-  } catch (error) {
-    logger.error(`Error running cron job: ${error.message}`);
-    res.status(500).json({ error: error.message });
-  }
-});
+//     logger.info("Cron job completed successfully");
+//     res.status(200).send("Cron job completed successfully");
+//   } catch (error) {
+//     logger.error(`Error running cron job: ${error.message}`);
+//     res.status(500).json({ error: error.message });
+//   }
+// });
+
+// app.get("/reset-task", async (req, res) => {
+//   try {
+//     await QuestProgress.updateMany({}, { $set: { completedToday: false } });
+//     logger.info("Reset completedToday for all quests");
+//   } catch (error) {
+//     logger.error(`Error resetting quest progress: ${error.message}`);
+//   }
+// });
 
 app.listen(port, () => {
   logger.info(`Server running on port ${port}`);
