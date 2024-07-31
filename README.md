@@ -68,6 +68,8 @@ To run the cron job locally, you can use the `node-cron` package. Ensure you hav
   ```json
   {
     "wallet": "your_wallet_address"
+    "playerId": "your_playerId"
+
   }
   ```
 
@@ -105,8 +107,8 @@ To run the cron job locally, you can use the `node-cron` package. Ensure you hav
 
 ### Get Image URL by Account Address
 
-- **URL**: `/nft-by-address`
+- **URL**: `/nft-by-playerId`
 - **Method**: `GET`
 - **Query Parameters**:
-  - `address`: Account address
+  - `playerId`: Player Id
 - **Description**: Retrieves the image URL for the specified account address.
