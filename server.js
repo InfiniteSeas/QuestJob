@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const dbConnect = require("./lib/dbConnect");
 const QuestProgress = require("./models/QuestProgress");
+const NewPlayerQuest = require("./models/NewPlayerQuest");
 const logger = require("./lib/logger");
 const {
   checkCraftForDailyQuest,
@@ -10,11 +11,15 @@ const {
   checkCombatToPVEForDailyQuest,
   checkCombatToPVPForDailyQuest,
 } = require("./services/questService");
+const { runNewbieQuestsForPlayer } = require("./services/newbieQuestService");
+
 const app = express();
 
-const NFT = require("./models/NFT"); // Ensure you import the NFT model
+const NFT = require("./models/nft"); // Ensure you import the NFT model
 
 const port = process.env.PORT || 3000;
+
+// TODO: ADD Sailing on daily
 
 // Allow requests from any subdomain of galxe.com
 const allowedOrigins = [
@@ -47,7 +52,7 @@ app.get("/", async (req, res) => {
 
 app.get("/nfts", async (req, res) => {
   try {
-    const nfts = await NFT.find({}, "image_url account_address playerId"); // Retrieve only image_url and account_address fields
+    const nfts = await NFT.find({}, "image_url account_address"); // Retrieve only image_url and account_address fields
     res.json(nfts);
   } catch (error) {
     logger.error(`Error fetching NFTs: ${error.message}`);
@@ -57,23 +62,30 @@ app.get("/nfts", async (req, res) => {
 
 // Add this endpoint in your existing Express app
 
-app.get("/nft-by-playerId", async (req, res) => {
-  const { playerId } = req.query;
+app.get("/nft-by-address", async (req, res) => {
+  const { account_address } = req.query;
 
-  if (!playerId) {
-    return res.status(400).json({ error: "Account playerId is required" });
+  if (!account_address) {
+    return res
+      .status(400)
+      .json({ error: "Account account_address is required" });
   }
 
   try {
-    const nft = await NFT.findOne({ playerId: playerId }, "image_url");
+    const nft = await NFT.findOne(
+      { account_address: account_address },
+      "image_url"
+    );
     if (nft) {
       res.json({ image_url: nft.image_url });
     } else {
-      res.status(404).json({ error: "NFT not found for the given playerId" });
+      res
+        .status(404)
+        .json({ error: "NFT not found for the given account_address" });
     }
   } catch (error) {
     logger.error(
-      `Error fetching NFT for playerId ${playerId}: ${error.message}`
+      `Error fetching NFT for account_address ${account_address}: ${error.message}`
     );
     res.status(500).json({ error: error.message });
   }
@@ -134,33 +146,121 @@ app.get("/get-all-quests", async (req, res) => {
   }
 });
 
+app.get("/get-all-newplayer-quests", async (req, res) => {
+  const { wallet } = req.query;
+
+  try {
+    const quests = [
+      "addedToRoster1ShipQuantity",
+      "cutWoodQuantity",
+      "minedOreQuantity",
+      "plantedCottonQuantity",
+      "rosterSailed",
+      "shipOrderArranged",
+      "walletCreated",
+      "claimedIsland",
+      "first4Craft",
+      "firstPveWin",
+    ];
+    const questStatuses = await NewPlayerQuest.find({ wallet });
+
+    const response = quests.map((quest) => {
+      const questProgress = questStatuses.find((q) => q.questName === quest);
+      return {
+        questName: quest,
+        completed: questProgress ? questProgress.completed : false,
+        totalRewardPoints: questProgress ? questProgress.totalRewardPoints : 0,
+      };
+    });
+
+    res.json(response);
+  } catch (error) {
+    logger.error(
+      `Error getting all new player quests for ${wallet}: ${error.message}`
+    );
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/get-wallets-and-points", async (req, res) => {
   try {
-    const wallets = await QuestProgress.aggregate([
+    const dailyPoints = await QuestProgress.aggregate([
       {
         $group: {
           _id: "$wallet",
           totalRewardPoints: { $sum: "$totalRewardPoints" },
+          playerName: { $first: "$playerName" },
         },
       },
     ]);
 
-    res.json(wallets);
+    const newbiePoints = await NewPlayerQuest.aggregate([
+      {
+        $group: {
+          _id: "$wallet",
+          totalRewardPoints: { $sum: "$totalRewardPoints" },
+          playerName: { $first: "$playerName" },
+        },
+      },
+    ]);
+
+    const combinedPoints = dailyPoints.map((daily) => {
+      const newbie = newbiePoints.find(
+        (newbie) => newbie._id.toString() === daily._id.toString()
+      );
+      return {
+        wallet: daily._id,
+        totalRewardPoints:
+          daily.totalRewardPoints + (newbie ? newbie.totalRewardPoints : 0),
+        playerName: daily.playerName || (newbie ? newbie.playerName : null),
+      };
+    });
+
+    newbiePoints.forEach((newbie) => {
+      if (!combinedPoints.some((combined) => combined.wallet === newbie._id)) {
+        combinedPoints.push({
+          wallet: newbie._id,
+          totalRewardPoints: newbie.totalRewardPoints,
+          playerName: newbie.playerName,
+        });
+      }
+    });
+
+    res.json(combinedPoints);
   } catch (error) {
     logger.error(`Error getting wallets and points: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 });
 
+// app.get("/get-wallets-and-points", async (req, res) => {
+//   try {
+//     const wallets = await QuestProgress.aggregate([
+//       {
+//         $group: {
+//           _id: "$wallet",
+//           totalRewardPoints: { $sum: "$totalRewardPoints" },
+//           playerName: { $first: "$playerName" }, // Get the playerName from the first entry
+//         },
+//       },
+//     ]);
+
+//     res.json(wallets);
+//   } catch (error) {
+//     logger.error(`Error getting wallets and points: ${error.message}`);
+//     res.status(500).json({ error: error.message });
+//   }
+// });
+
 // Endpoint to add a new wallet to the database
 // Updated Endpoint to add a new wallet to the database
 app.post("/add-wallet", async (req, res) => {
-  const { wallet, playerId } = req.body;
+  const { wallet, playerName } = req.body;
 
-  if (!wallet || !playerId) {
-    return res
-      .status(400)
-      .json({ error: "Wallet address and Player ID are required" });
+  if (!wallet || !playerName) {
+    return res.status(400).json({
+      error: "Wallet address, and Player Name are required",
+    });
   }
 
   try {
@@ -178,29 +278,108 @@ app.post("/add-wallet", async (req, res) => {
         questName: quest,
         completedToday: false,
         totalRewardPoints: 0,
+        playerName: playerName,
       });
     }
 
-    // Updating the playerId in the NFT collection
-    const nft = await NFT.findOne({ account_address: wallet });
-    if (nft) {
-      nft.playerId = playerId;
-      await nft.save();
-    } else {
+    // Creating an initial entry for the wallet in NewPlayerQuest
+    const newbieQuests = [
+      "addedToRoster1ShipQuantity",
+      "cutWoodQuantity",
+      "minedOreQuantity",
+      "plantedCottonQuantity",
+      "rosterSailed",
+      "shipOrderArranged",
+      "walletCreated",
+      "claimedIsland",
+      "first4Craft",
+      "firstPveWin",
+    ];
+    for (const quest of newbieQuests) {
+      await NewPlayerQuest.create({
+        wallet,
+        questName: quest,
+        completed: false,
+        totalRewardPoints: 0,
+        playerName: playerName,
+      });
+    }
+
+    // Completing the 'walletCreated' quest
+    const walletCreatedQuest = await NewPlayerQuest.findOne({
+      wallet,
+      questName: "walletCreated",
+    });
+
+    if (walletCreatedQuest) {
+      walletCreatedQuest.completed = true;
+      walletCreatedQuest.totalRewardPoints = 2;
+      await walletCreatedQuest.save();
+    }
+
+    // Updating the playerName in the NFT collection
+    const updateResult = await NFT.updateOne(
+      { account_address: wallet },
+      { $set: { playerName: playerName } }
+    );
+
+    if (updateResult.nModified === 0) {
       return res
         .status(404)
         .json({ error: "NFT not found for the given address" });
     }
 
     logger.info(
-      `Wallet ${wallet} and Player ID ${playerId} added successfully`
+      `Wallet ${wallet} and Player Name ${playerName} added successfully`
     );
-    res
-      .status(201)
-      .json({ message: "Wallet and Player ID added successfully" });
+    res.status(201).json({
+      message: "Wallet and Player Name added successfully",
+    });
   } catch (error) {
     logger.error(
-      `Error adding wallet ${wallet} and Player ID ${playerId}: ${error.message}`
+      `Error adding wallet ${wallet} and Player Name ${playerName}: ${error.message}`
+    );
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint to mark claimedIsland quest as completed
+app.post("/complete-claimedIsland", async (req, res) => {
+  const { wallet } = req.body;
+
+  if (!wallet) {
+    return res.status(400).json({
+      error: "Wallet address is required",
+    });
+  }
+
+  try {
+    const claimedIslandQuest = await NewPlayerQuest.findOne({
+      wallet,
+      questName: "claimedIsland",
+    });
+
+    if (claimedIslandQuest) {
+      if (claimedIslandQuest.completed) {
+        return res.status(400).json({
+          error: "claimedIsland quest is already completed",
+        });
+      }
+      claimedIslandQuest.completed = true;
+      claimedIslandQuest.totalRewardPoints = 5;
+      await claimedIslandQuest.save();
+      res.status(200).json({
+        message: "claimedIsland quest marked as completed",
+        totalRewardPoints: claimedIslandQuest.totalRewardPoints,
+      });
+    } else {
+      res.status(404).json({
+        error: "claimedIsland quest not found for the given wallet",
+      });
+    }
+  } catch (error) {
+    logger.error(
+      `Error completing claimedIsland quest for ${wallet}: ${error.message}`
     );
     res.status(500).json({ error: error.message });
   }
@@ -232,6 +411,23 @@ app.post("/add-wallet", async (req, res) => {
 //     logger.info("Reset completedToday for all quests");
 //   } catch (error) {
 //     logger.error(`Error resetting quest progress: ${error.message}`);
+//   }
+// });
+
+// app.get("/run-newbie-quests", async (req, res) => {
+//   try {
+//     const wallets = await QuestProgress.distinct("wallet");
+
+//     for (const wallet of wallets) {
+//       await runNewbieQuestsForPlayer(wallet);
+//     }
+//     logger.info(`Newbie quests check completed for ${wallet}`);
+//     res.status(200).send(`Newbie quests check completed for ${wallet}`);
+//   } catch (error) {
+//     logger.error(
+//       `Error running newbie quests check for ${wallet}: ${error.message}`
+//     );
+//     res.status(500).json({ error: error.message });
 //   }
 // });
 

@@ -1,14 +1,14 @@
 const mongoose = require("mongoose");
 
-const questProgressSchema = new mongoose.Schema({
+const newPlayerQuestSchema = new mongoose.Schema({
   wallet: { type: String, required: true },
   questName: { type: String, required: true },
-  completedToday: { type: Boolean, default: false },
+  completed: { type: Boolean, default: false },
   totalRewardPoints: { type: Number, required: true },
   timestamp: { type: Date, default: Date.now },
   playerName: { type: String, required: false },
 });
 
-const QuestProgress = mongoose.model("QuestProgress", questProgressSchema);
+const NewPlayerQuest = mongoose.model("NewPlayerQuest", newPlayerQuestSchema);
 
-module.exports = QuestProgress;
+module.exports = NewPlayerQuest;

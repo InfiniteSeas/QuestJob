@@ -82,7 +82,6 @@ async function updateQuestProgressInDB(
     );
   } else if (!questProgress.completedToday) {
     questProgress.completedToday = completed;
-    await questProgress.save();
     if (completed) {
       questProgress.totalRewardPoints += points;
     }

@@ -2,6 +2,7 @@ require("dotenv").config();
 const cron = require("node-cron");
 const dbConnect = require("./lib/dbConnect");
 const QuestProgress = require("./models/QuestProgress");
+const NewPlayerQuest = require("./models/NewPlayerQuest");
 const logger = require("./lib/logger");
 const {
   checkCraftForDailyQuest,
@@ -9,6 +10,7 @@ const {
   checkCombatToPVEForDailyQuest,
   checkCombatToPVPForDailyQuest,
 } = require("./services/questService");
+const { runNewbieQuestsForPlayer } = require("./services/newbieQuestService");
 
 dbConnect();
 
@@ -21,6 +23,8 @@ const updateQuestProgress = async () => {
       await checkFaucetForDailyQuest({ playerAddr: wallet });
       await checkCombatToPVEForDailyQuest({ playerAddr: wallet });
       await checkCombatToPVPForDailyQuest({ playerAddr: wallet });
+      // Check and update newbie quests progress
+      await runNewbieQuestsForPlayer(wallet);
     }
     logger.info("Quest progress updated for all wallets");
   } catch (error) {
@@ -45,8 +49,3 @@ cron.schedule("1 0 * * *", resetQuestProgress);
 
 // Schedule the cron job to run every 20 minutes for testing
 cron.schedule("*/20 * * * *", updateQuestProgress);
-
-
-
-
-
