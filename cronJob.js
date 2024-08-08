@@ -47,5 +47,5 @@ cron.schedule("1 0 * * *", resetQuestProgress);
 // Schedule the cron job to run every day at 10 PM UTC
 // cron.schedule("0 22 * * *", updateQuestProgress);
 
-// Schedule the cron job to run every 30 minutes for testing
-cron.schedule("*/30 * * * *", updateQuestProgress);
+// Schedule the cron job to run every 30 minutes, starting at 2 minutes past the hour
+cron.schedule("2,32 * * * *", updateQuestProgress);
