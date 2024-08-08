@@ -150,6 +150,18 @@ app.get("/get-all-newplayer-quests", async (req, res) => {
   const { wallet } = req.query;
 
   try {
+    await runNewbieQuestsForPlayer(wallet);
+    logger.info(
+      "get-all-newplayer-quests runNewbieQuestsForPlayer pull completed successfully"
+    );
+  } catch (error) {
+    logger.error(
+      `Error running get-all-newplayer-quests runNewbieQuestsForPlayer pull: ${error.message}`
+    );
+    res.status(500).json({ error: error.message });
+  }
+
+  try {
     const quests = [
       "addedToRoster1ShipQuantity",
       "cutWoodQuantity",
@@ -386,7 +398,7 @@ app.post("/complete-claimedIsland", async (req, res) => {
 });
 
 // Endpoint to trigger the cron job
-// app.get("/run-cron", async (req, res) => {
+// app.post("/run-cron", async (req, res) => {
 //   try {
 //     const wallets = await QuestProgress.distinct("wallet");
 
@@ -405,28 +417,27 @@ app.post("/complete-claimedIsland", async (req, res) => {
 //   }
 // });
 
-// app.get("/reset-task", async (req, res) => {
+// app.post("/reset-task", async (req, res) => {
 //   try {
 //     await QuestProgress.updateMany({}, { $set: { completedToday: false } });
+//     res.status(200).send("Reset completed successfully");
 //     logger.info("Reset completedToday for all quests");
 //   } catch (error) {
 //     logger.error(`Error resetting quest progress: ${error.message}`);
 //   }
 // });
 
-// app.get("/run-newbie-quests", async (req, res) => {
+// app.post("/run-newbie-quests", async (req, res) => {
 //   try {
 //     const wallets = await QuestProgress.distinct("wallet");
 
 //     for (const wallet of wallets) {
 //       await runNewbieQuestsForPlayer(wallet);
 //     }
-//     logger.info(`Newbie quests check completed for ${wallet}`);
-//     res.status(200).send(`Newbie quests check completed for ${wallet}`);
+//     logger.info(`Newbie quests check completed`);
+//     res.status(200).send(`Newbie quests check completed`);
 //   } catch (error) {
-//     logger.error(
-//       `Error running newbie quests check for ${wallet}: ${error.message}`
-//     );
+//     logger.error(`Error running newbie quests check: ${error.message}`);
 //     res.status(500).json({ error: error.message });
 //   }
 // });

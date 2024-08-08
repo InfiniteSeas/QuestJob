@@ -14,10 +14,26 @@ const getUnixTimestamp = (
   return Date.UTC(year, month - 1, day, hour, minute, second);
 };
 
+// Current date
+const currentDate = new Date();
+const currentYear = currentDate.getUTCFullYear();
+const currentMonth = currentDate.getUTCMonth() + 1; // getUTCMonth() returns month from 0-11
+const currentDay = currentDate.getUTCDate();
+const currentHour = currentDate.getUTCHours();
+const currentMin = currentDate.getUTCMinutes();
+const currentSec = currentDate.getUTCSeconds();
+
 // August 8th, 2024 timestamp
 const startAt = getUnixTimestamp(2024, 8, 8, 0, 0, 0);
 // Current timestamp
-const endedAt = Date.now();
+const endedAt = getUnixTimestamp(
+  currentYear,
+  currentMonth,
+  currentDay,
+  currentHour,
+  currentMin,
+  currentSec
+);
 
 const INDEXER_BASE_URL = process.env.INDEXER_BASE_URL || "";
 
@@ -142,7 +158,7 @@ async function checkBooleanQuestAPI(playerAddr, apiEndpoint, questName) {
   }
 }
 
-async function checkFirst4Craft({ playerAddr }) {
+async function checkFirst4Craft(playerAddr) {
   if (await isQuestCompleted(playerAddr, "first4Craft")) {
     logger.info(`Quest 'first4Craft' already completed for ${playerAddr}`);
     return;
@@ -170,7 +186,7 @@ async function checkFirst4Craft({ playerAddr }) {
   }
 }
 
-async function checkFirstPveWin({ playerAddr }) {
+async function checkFirstPveWin(playerAddr) {
   if (await isQuestCompleted(playerAddr, "firstPveWin")) {
     logger.info(`Quest 'firstPveWin' already completed for ${playerAddr}`);
     return;
@@ -201,36 +217,36 @@ async function checkFirstPveWin({ playerAddr }) {
 async function runNewbieQuestsForPlayer(playerAddr) {
   await checkQuestAPI(
     playerAddr,
-    "/api/quests/addedToRoster1ShipQuantity",
+    "/quests/addedToRoster1ShipQuantity",
     "addedToRoster1ShipQuantity",
     4
   );
   await checkQuestAPI(
     playerAddr,
-    "/api/quests/cutWoodQuantity",
+    "/quests/cutWoodQuantity",
     "cutWoodQuantity",
     5
   );
   await checkQuestAPI(
     playerAddr,
-    "/api/quests/minedOreQuantity",
+    "/quests/minedOreQuantity",
     "minedOreQuantity",
     5
   );
   await checkQuestAPI(
     playerAddr,
-    "/api/quests/plantedCottonQuantity",
+    "/quests/plantedCottonQuantity",
     "plantedCottonQuantity",
     5
   );
   await checkBooleanQuestAPI(
     playerAddr,
-    "/api/quests/rosterSailed",
+    "/quests/rosterSailed",
     "rosterSailed"
   );
   await checkBooleanQuestAPI(
     playerAddr,
-    "/api/quests/shipOrderArranged",
+    "/quests/shipOrderArranged",
     "shipOrderArranged"
   );
   await checkFirst4Craft(playerAddr);
