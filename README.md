@@ -56,19 +56,6 @@ npm run start:cron:dev
 
 ## API Endpoints
 
-### Add Wallet
-
-- **URL**: `/add-wallet`
-- **Method**: `POST`
-- **Body**:
-  ```json
-  {
-    "wallet": "your_wallet_address",
-    "playerName": "your_player_name"
-  }
-  ```
-- **Description**: Adds a new wallet and initializes quest entries.
-
 ### Check Quest
 
 - **URL**: `/check-quest`
@@ -127,19 +114,6 @@ npm run start:cron:dev
 - **Method**: `GET`
 - **Description**: Aggregates and retrieves total reward points for all wallets and NFTs, grouped by playerName.
 
-### Get All NFTs' Image URLs and Account Addresses
-
-- **URL**: `/nfts`
-- **Method**: `GET`
-- **Description**: Retrieves all NFTs' image URLs and account addresses.
-
-### Get Image URL by Account Address
-
-- **URL**: `/nft-by-address`
-- **Method**: `GET`
-- **Query Parameters**:
-  - `account_address`: Account address
-- **Description**: Retrieves the image URL for the specified account address.
 
 ## Running the Cron Job (Optional)
 
