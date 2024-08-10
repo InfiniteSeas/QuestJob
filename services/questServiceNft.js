@@ -1,10 +1,9 @@
 const axios = require("axios");
 const dbConnect = require("../lib/dbConnect");
-const QuestProgress = require("../models/QuestProgress");
+const QuestProgress = require("../models/NewPlayerQuestNft");
 const logger = require("../lib/logger");
 
 const INDEXER_BASE_URL = process.env.INDEXER_BASE_URL || "";
-const MAP_ID = process.env.MAP_ID || "";
 
 const getUnixTimestamp = (
   year,
@@ -51,16 +50,31 @@ const getRewardPoints = (questName) => {
   }
 };
 
-async function isQuestCompletedToday(playerAddr, questName) {
+// Function to pull wallets from MapClaimIslandWhitelistItems API
+async function getIdAndWalletsFromNFT() {
+  try {
+    const { data } = await axios.get(`${INDEXER_BASE_URL}/Avatars`);
+
+    return data.map((item) => ({
+      id: item.id,
+      owner: item.owner,
+    })); // Extracting the wallet addresses from the response
+  } catch (error) {
+    logger.error(`Error fetching wallets from whitelist: ${error.message}`);
+    return [];
+  }
+}
+
+async function isQuestCompletedToday(nft_id, questName) {
   const questProgress = await QuestProgress.findOne({
-    wallet: playerAddr,
+    nft_id: nft_id,
     questName,
   });
   return questProgress ? questProgress.completedToday : false;
 }
 
 async function updateQuestProgressInDB(
-  playerAddr,
+  nft_id,
   questName,
   points,
   completed,
@@ -68,27 +82,27 @@ async function updateQuestProgressInDB(
 ) {
   await dbConnect();
   const questProgress = await QuestProgress.findOne({
-    wallet: playerAddr,
+    nft_id: nft_id,
     questName,
   });
 
   if (!questProgress) {
     if (!playerName) {
       logger.info(
-        `Skipping creation of quest progress for ${playerAddr} - ${questName} as playerName is not provided`
+        `Skipping creation of quest progress for ${nft_id} - ${questName} as playerName is not provided`
       );
       return;
     }
 
     await QuestProgress.create({
-      wallet: playerAddr,
+      nft_id: nft_id,
       questName,
       completedToday: completed,
       totalRewardPoints: completed ? points : 0,
       playerName: playerName,
     });
     logger.info(
-      `Created new quest progress for ${playerAddr} - ${questName}: completedToday=${completed} with ${points} points`
+      `Created new quest progress for ${nft_id} - ${questName}: completedToday=${completed} with ${points} points`
     );
   } else if (!questProgress.completedToday) {
     questProgress.completedToday = completed;
@@ -97,53 +111,17 @@ async function updateQuestProgressInDB(
     }
     await questProgress.save();
     logger.info(
-      `Updated quest progress for ${playerAddr} - ${questName}: completedToday=${completed} with ${points} points`
+      `Updated quest progress for ${nft_id} - ${questName}: completedToday=${completed} with ${points} points`
     );
   } else {
     logger.info(
-      `No update needed for ${playerAddr} - ${questName} as it is already completed today`
+      `No update needed for ${nft_id} - ${questName} as it is already completed today`
     );
   }
 }
 
-// Function to pull wallets from MapClaimIslandWhitelistItems API
-async function getWalletsFromWhitelist() {
-  try {
-    const { data } = await axios.get(
-      `${INDEXER_BASE_URL}/Maps/${MAP_ID}/MapClaimIslandWhitelistItems`
-    );
-    return data.map((item) => item.key); // Extracting the wallet addresses from the response
-  } catch (error) {
-    logger.error(`Error fetching wallets from whitelist: ${error.message}`);
-    return [];
-  }
-}
-
-async function getPlayerNameByAddress(playerAddr) {
-  try {
-    const { data: players } = await axios.get(`${INDEXER_BASE_URL}/Players`, {
-      params: {
-        owner: playerAddr,
-      },
-    });
-
-    // If players exist, return the name of the first player
-    if (players.length > 0) {
-      return players[0].name || ""; // Assuming 'name' is the field containing the player's name
-    }
-
-    // Return an empty string if no players found
-    return "";
-  } catch (error) {
-    logger.error(
-      `Error retrieving player name for ${playerAddr}: ${error.message}`
-    );
-    return ""; // Return an empty string in case of error as well
-  }
-}
-
-async function checkCraftForDailyQuest(playerAddr, playerName) {
-  if (await isQuestCompletedToday(playerAddr, "craft_ships")) {
+async function checkCraftForDailyQuestNft(playerAddr, nft_id, playerName) {
+  if (await isQuestCompletedToday(nft_id, "craft_ships")) {
     logger.info(
       `Quest 'craft_ships' already completed today for ${playerAddr}`
     );
@@ -165,7 +143,7 @@ async function checkCraftForDailyQuest(playerAddr, playerName) {
     const completed = craftRecords.length >= 4;
     const points = completed ? getRewardPoints("craft_ships") : 0;
     await updateQuestProgressInDB(
-      playerAddr,
+      nft_id,
       "craft_ships",
       points,
       completed,
@@ -173,13 +151,13 @@ async function checkCraftForDailyQuest(playerAddr, playerName) {
     );
   } catch (error) {
     logger.error(
-      `Error checking craft for daily quest for ${playerAddr}: ${error.message}`
+      `Error checking craft for daily quest for ${nft_id}: ${error.message}`
     );
   }
 }
 
-async function checkFaucetForDailyQuest(playerAddr, playerName) {
-  if (await isQuestCompletedToday(playerAddr, "claim_energy")) {
+async function checkFaucetForDailyQuestNft(playerAddr, nft_id, playerName) {
+  if (await isQuestCompletedToday(nft_id, "claim_energy")) {
     logger.info(
       `Quest 'claim_energy' already completed today for ${playerAddr}`
     );
@@ -202,7 +180,7 @@ async function checkFaucetForDailyQuest(playerAddr, playerName) {
     );
     const points = completed ? getRewardPoints("claim_energy") : 0;
     await updateQuestProgressInDB(
-      playerAddr,
+      nft_id,
       "claim_energy",
       points,
       completed,
@@ -210,13 +188,17 @@ async function checkFaucetForDailyQuest(playerAddr, playerName) {
     );
   } catch (error) {
     logger.error(
-      `Error checking faucet for daily quest for ${playerAddr}: ${error.message}`
+      `Error checking faucet for daily quest for ${nft_id}: ${error.message}`
     );
   }
 }
 
-async function checkCombatToPVEForDailyQuest(playerAddr, playerName) {
-  if (await isQuestCompletedToday(playerAddr, "battle_pve")) {
+async function checkCombatToPVEForDailyQuestNft(
+  playerAddr,
+  nft_id,
+  playerName
+) {
+  if (await isQuestCompletedToday(nft_id, "battle_pve")) {
     logger.info(`Quest 'battle_pve' already completed today for ${playerAddr}`);
     return;
   }
@@ -236,7 +218,7 @@ async function checkCombatToPVEForDailyQuest(playerAddr, playerName) {
       combats.filter((combat) => combat.winner === 1).length >= 3;
     const points = completed ? getRewardPoints("battle_pve") : 0;
     await updateQuestProgressInDB(
-      playerAddr,
+      nft_id,
       "battle_pve",
       points,
       completed,
@@ -244,13 +226,17 @@ async function checkCombatToPVEForDailyQuest(playerAddr, playerName) {
     );
   } catch (error) {
     logger.error(
-      `Error checking combat to PVE for daily quest for ${playerAddr}: ${error.message}`
+      `Error checking combat to PVE for daily quest for ${nft_id}: ${error.message}`
     );
   }
 }
 
-async function checkCombatToPVPForDailyQuest(playerAddr, playerName) {
-  if (await isQuestCompletedToday(playerAddr, "battle_pvp")) {
+async function checkCombatToPVPForDailyQuestNft(
+  playerAddr,
+  nft_id,
+  playerName
+) {
+  if (await isQuestCompletedToday(nft_id, "battle_pvp")) {
     logger.info(`Quest 'battle_pvp' already completed today for ${playerAddr}`);
     return;
   }
@@ -273,7 +259,7 @@ async function checkCombatToPVPForDailyQuest(playerAddr, playerName) {
     );
     const points = completed ? getRewardPoints("battle_pvp") : 0;
     await updateQuestProgressInDB(
-      playerAddr,
+      nft_id,
       "battle_pvp",
       points,
       completed,
@@ -281,16 +267,15 @@ async function checkCombatToPVPForDailyQuest(playerAddr, playerName) {
     );
   } catch (error) {
     logger.error(
-      `Error checking combat to PVP for daily quest for ${playerAddr}: ${error.message}`
+      `Error checking combat to PVP for daily quest for ${nft_id}: ${error.message}`
     );
   }
 }
 
 module.exports = {
-  checkCraftForDailyQuest,
-  checkFaucetForDailyQuest,
-  checkCombatToPVEForDailyQuest,
-  checkCombatToPVPForDailyQuest,
-  getWalletsFromWhitelist,
-  getPlayerNameByAddress,
+  checkCraftForDailyQuestNft,
+  checkFaucetForDailyQuestNft,
+  checkCombatToPVEForDailyQuestNft,
+  checkCombatToPVPForDailyQuestNft,
+  getIdAndWalletsFromNFT,
 };

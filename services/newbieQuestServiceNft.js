@@ -1,6 +1,6 @@
 const axios = require("axios");
 const dbConnect = require("../lib/dbConnect");
-const NewPlayerQuest = require("../models/NewPlayerQuest");
+const NewPlayerQuest = require("../models/NewPlayerQuestNft");
 const logger = require("../lib/logger");
 
 const getUnixTimestamp = (
@@ -65,16 +65,16 @@ const getRewardPoints = (questName) => {
   }
 };
 
-async function isQuestCompleted(playerAddr, questName) {
+async function isQuestCompleted(nft_id, questName) {
   const questProgress = await NewPlayerQuest.findOne({
-    wallet: playerAddr,
+    nft_id: nft_id,
     questName,
   });
   return questProgress ? questProgress.completed : false;
 }
 
 async function updateQuestProgressInDB(
-  playerAddr,
+  nft_id,
   questName,
   points,
   completed,
@@ -82,27 +82,27 @@ async function updateQuestProgressInDB(
 ) {
   await dbConnect();
   const questProgress = await NewPlayerQuest.findOne({
-    wallet: playerAddr,
+    nft_id: nft_id,
     questName,
   });
 
   if (!questProgress) {
     if (!playerName) {
       logger.info(
-        `Skipping creation of quest progress for ${playerAddr} - ${questName} as playerName is not provided`
+        `Skipping creation of quest progress for ${nft_id} - ${questName} as playerName is not provided`
       );
       return;
     }
 
     await NewPlayerQuest.create({
-      wallet: playerAddr,
+      nft_id: nft_id,
       questName,
       completed: completed,
       totalRewardPoints: completed ? points : 0,
       playerName: playerName,
     });
     logger.info(
-      `Created new quest progress for ${playerAddr} - ${questName}: completed=${completed} with ${points} points`
+      `Created new quest progress for ${nft_id} - ${questName}: completed=${completed} with ${points} points`
     );
   } else if (!questProgress.completed) {
     questProgress.completed = completed;
@@ -111,23 +111,24 @@ async function updateQuestProgressInDB(
     }
     await questProgress.save();
     logger.info(
-      `Updated quest progress for ${playerAddr} - ${questName}: completed=${completed} with ${points} points`
+      `Updated quest progress for ${nft_id} - ${questName}: completed=${completed} with ${points} points`
     );
   } else {
     logger.info(
-      `No update needed for ${playerAddr} - ${questName} as it is already completed`
+      `No update needed for ${nft_id} - ${questName} as it is already completed`
     );
   }
 }
 
 async function checkQuestAPI(
   playerAddr,
+  nft_id,
   playerName,
   apiEndpoint,
   questName,
   requiredValue
 ) {
-  if (await isQuestCompleted(playerAddr, questName)) {
+  if (await isQuestCompleted(nft_id, questName)) {
     logger.info(`Quest '${questName}' already completed for ${playerAddr}`);
     return;
   }
@@ -142,7 +143,7 @@ async function checkQuestAPI(
     const completed = data >= requiredValue;
     const points = completed ? getRewardPoints(questName) : 0;
     await updateQuestProgressInDB(
-      playerAddr,
+      nft_id,
       questName,
       points,
       completed,
@@ -157,12 +158,13 @@ async function checkQuestAPI(
 
 async function checkBooleanQuestAPI(
   playerAddr,
+  nft_id,
   playerName,
   apiEndpoint,
   questName
 ) {
-  if (await isQuestCompleted(playerAddr, questName)) {
-    logger.info(`Quest '${questName}' already completed for ${playerAddr}`);
+  if (await isQuestCompleted(nft_id, questName)) {
+    logger.info(`Quest '${questName}' already completed for ${nft_id}`);
     return;
   }
 
@@ -176,7 +178,7 @@ async function checkBooleanQuestAPI(
     const completed = data === true;
     const points = completed ? getRewardPoints(questName) : 0;
     await updateQuestProgressInDB(
-      playerAddr,
+      nft_id,
       questName,
       points,
       completed,
@@ -184,14 +186,14 @@ async function checkBooleanQuestAPI(
     );
   } catch (error) {
     logger.error(
-      `Error checking quest '${questName}' for ${playerAddr}: ${error.message}`
+      `Error checking quest '${questName}' for ${nft_id}: ${error.message}`
     );
   }
 }
 
-async function checkFirst4Craft(playerAddr, playerName) {
-  if (await isQuestCompleted(playerAddr, "first4Craft")) {
-    logger.info(`Quest 'first4Craft' already completed for ${playerAddr}`);
+async function checkFirst4Craft(playerAddr, nft_id, playerName) {
+  if (await isQuestCompleted(nft_id, "first4Craft")) {
+    logger.info(`Quest 'first4Craft' already completed for ${nft_id}`);
     return;
   }
 
@@ -210,7 +212,7 @@ async function checkFirst4Craft(playerAddr, playerName) {
     const completed = craftRecords.length >= 4;
     const points = completed ? getRewardPoints("first4Craft") : 0;
     await updateQuestProgressInDB(
-      playerAddr,
+      nft_id,
       "first4Craft",
       points,
       completed,
@@ -218,14 +220,14 @@ async function checkFirst4Craft(playerAddr, playerName) {
     );
   } catch (error) {
     logger.error(
-      `Error checking first4Craft quest for ${playerAddr}: ${error.message}`
+      `Error checking first4Craft quest for ${nft_id}: ${error.message}`
     );
   }
 }
 
-async function checkFirstPveWin(playerAddr, playerName) {
-  if (await isQuestCompleted(playerAddr, "firstPveWin")) {
-    logger.info(`Quest 'firstPveWin' already completed for ${playerAddr}`);
+async function checkFirstPveWin(playerAddr, nft_id, playerName) {
+  if (await isQuestCompleted(nft_id, "firstPveWin")) {
+    logger.info(`Quest 'firstPveWin' already completed for ${nft_id}`);
     return;
   }
   try {
@@ -244,7 +246,7 @@ async function checkFirstPveWin(playerAddr, playerName) {
       combats.filter((combat) => combat.winner === 1).length >= 1;
     const points = completed ? getRewardPoints("firstPveWin") : 0;
     await updateQuestProgressInDB(
-      playerAddr,
+      nft_id,
       "firstPveWin",
       points,
       completed,
@@ -252,13 +254,13 @@ async function checkFirstPveWin(playerAddr, playerName) {
     );
   } catch (error) {
     logger.error(
-      `Error checking firstPveWin quest for ${playerAddr}: ${error.message}`
+      `Error checking firstPveWin quest for ${nft_id}: ${error.message}`
     );
   }
 }
 
 // Function to handle the /api/Players?owner=address API call
-async function checkWalletAndIslandQuests(playerAddr, playerName) {
+async function checkWalletAndIslandQuests(playerAddr, nft_id, playerName) {
   try {
     const { data: players } = await axios.get(`${INDEXER_BASE_URL}/Players`, {
       params: {
@@ -271,7 +273,7 @@ async function checkWalletAndIslandQuests(playerAddr, playerName) {
       // Mark walletCreated quest as completed
       const walletPoint = getRewardPoints("walletCreated");
       await updateQuestProgressInDB(
-        playerAddr,
+        nft_id,
         "walletCreated",
         walletPoint,
         true,
@@ -286,7 +288,7 @@ async function checkWalletAndIslandQuests(playerAddr, playerName) {
       if (hasClaimedIsland) {
         const claimedPoint = getRewardPoints("claimedIsland");
         await updateQuestProgressInDB(
-          playerAddr,
+          nft_id,
           "claimedIsland",
           claimedPoint,
           true,
@@ -301,9 +303,10 @@ async function checkWalletAndIslandQuests(playerAddr, playerName) {
   }
 }
 
-async function runNewbieQuestsForPlayer(playerAddr, playerName) {
+async function runNewbieQuestsForPlayerNft(playerAddr, nft_id, playerName) {
   await checkQuestAPI(
     playerAddr,
+    nft_id,
     playerName,
     "/quests/addedToRoster1ShipQuantity",
     "addedToRoster1ShipQuantity",
@@ -311,6 +314,7 @@ async function runNewbieQuestsForPlayer(playerAddr, playerName) {
   );
   await checkQuestAPI(
     playerAddr,
+    nft_id,
     playerName,
     "/quests/cutWoodQuantity",
     "cutWoodQuantity",
@@ -318,6 +322,7 @@ async function runNewbieQuestsForPlayer(playerAddr, playerName) {
   );
   await checkQuestAPI(
     playerAddr,
+    nft_id,
     playerName,
     "/quests/minedOreQuantity",
     "minedOreQuantity",
@@ -325,6 +330,7 @@ async function runNewbieQuestsForPlayer(playerAddr, playerName) {
   );
   await checkQuestAPI(
     playerAddr,
+    nft_id,
     playerName,
     "/quests/plantedCottonQuantity",
     "plantedCottonQuantity",
@@ -332,21 +338,23 @@ async function runNewbieQuestsForPlayer(playerAddr, playerName) {
   );
   await checkBooleanQuestAPI(
     playerAddr,
+    nft_id,
     playerName,
     "/quests/rosterSailed",
     "rosterSailed"
   );
   await checkBooleanQuestAPI(
     playerAddr,
+    nft_id,
     playerName,
     "/quests/shipOrderArranged",
     "shipOrderArranged"
   );
-  await checkFirst4Craft(playerAddr, playerName);
-  await checkFirstPveWin(playerAddr, playerName);
-  await checkWalletAndIslandQuests(playerAddr, playerName);
+  await checkFirst4Craft(playerAddr, nft_id, playerName);
+  await checkFirstPveWin(playerAddr, nft_id, playerName);
+  await checkWalletAndIslandQuests(playerAddr, nft_id, playerName);
 }
 
 module.exports = {
-  runNewbieQuestsForPlayer,
+  runNewbieQuestsForPlayerNft,
 };
