@@ -124,10 +124,10 @@ app.get("/get-all-quests", async (req, res) => {
     if (playerName) {
       try {
         // Check and update daily quests
-        await checkCraftForDailyQuest({ playerAddr: wallet, playerName });
-        await checkFaucetForDailyQuest({ playerAddr: wallet, playerName });
-        await checkCombatToPVEForDailyQuest({ playerAddr: wallet, playerName });
-        await checkCombatToPVPForDailyQuest({ playerAddr: wallet, playerName });
+        await checkCraftForDailyQuest(wallet, playerName);
+        await checkFaucetForDailyQuest(wallet, playerName);
+        await checkCombatToPVEForDailyQuest(wallet, playerName);
+        await checkCombatToPVPForDailyQuest(wallet, playerName);
         logger.info("Indexer pull completed successfully");
       } catch (error) {
         logger.error(`Error running indexer pull: ${error.message}`);
