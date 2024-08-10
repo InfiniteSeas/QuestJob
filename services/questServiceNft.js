@@ -1,6 +1,6 @@
 const axios = require("axios");
 const dbConnect = require("../lib/dbConnect");
-const QuestProgress = require("../models/NewPlayerQuestNft");
+const QuestProgressNft = require("../models/QuestProgressNft");
 const logger = require("../lib/logger");
 
 const INDEXER_BASE_URL = process.env.INDEXER_BASE_URL || "";
@@ -66,7 +66,7 @@ async function getIdAndWalletsFromNFT() {
 }
 
 async function isQuestCompletedToday(nft_id, questName) {
-  const questProgress = await QuestProgress.findOne({
+  const questProgress = await QuestProgressNft.findOne({
     nft_id: nft_id,
     questName,
   });
@@ -81,7 +81,7 @@ async function updateQuestProgressInDB(
   playerName
 ) {
   await dbConnect();
-  const questProgress = await QuestProgress.findOne({
+  const questProgress = await QuestProgressNft.findOne({
     nft_id: nft_id,
     questName,
   });
@@ -94,7 +94,7 @@ async function updateQuestProgressInDB(
       return;
     }
 
-    await QuestProgress.create({
+    await QuestProgressNft.create({
       nft_id: nft_id,
       questName,
       completedToday: completed,

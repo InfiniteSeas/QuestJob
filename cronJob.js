@@ -126,9 +126,9 @@ cron.schedule("1 0 * * *", resetQuestNftProgress);
 // cron.schedule("0 22 * * *", updateQuestProgress);
 
 // Schedule the cron job to run every 30 minutes, starting at 2 minutes past the hour
-// cron.schedule("2,32 * * * *", updateQuestProgress);
-// cron.schedule("2,32 * * * *", updateQuestNftProgress);
+cron.schedule("2,32 * * * *", updateQuestProgress);
+cron.schedule("2,32 * * * *", updateQuestNftProgress);
 
 // This will run the job every 2 minutes
-cron.schedule("2,32 * * * *", updateQuestProgress);
-cron.schedule("*/2 * * * *", updateQuestNftProgress);
+// cron.schedule("*/2 * * * *", updateQuestProgress);
+// cron.schedule("*/2 * * * *", updateQuestNftProgress);

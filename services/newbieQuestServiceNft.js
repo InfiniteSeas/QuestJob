@@ -1,6 +1,6 @@
 const axios = require("axios");
 const dbConnect = require("../lib/dbConnect");
-const NewPlayerQuest = require("../models/NewPlayerQuestNft");
+const NewPlayerQuestNft = require("../models/NewPlayerQuestNft");
 const logger = require("../lib/logger");
 
 const getUnixTimestamp = (
@@ -66,7 +66,7 @@ const getRewardPoints = (questName) => {
 };
 
 async function isQuestCompleted(nft_id, questName) {
-  const questProgress = await NewPlayerQuest.findOne({
+  const questProgress = await NewPlayerQuestNft.findOne({
     nft_id: nft_id,
     questName,
   });
@@ -81,7 +81,7 @@ async function updateQuestProgressInDB(
   playerName
 ) {
   await dbConnect();
-  const questProgress = await NewPlayerQuest.findOne({
+  const questProgress = await NewPlayerQuestNft.findOne({
     nft_id: nft_id,
     questName,
   });
@@ -94,7 +94,7 @@ async function updateQuestProgressInDB(
       return;
     }
 
-    await NewPlayerQuest.create({
+    await NewPlayerQuestNft.create({
       nft_id: nft_id,
       questName,
       completed: completed,
