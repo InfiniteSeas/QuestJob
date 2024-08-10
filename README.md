@@ -105,12 +105,30 @@ npm run start:cron:dev
   - `nft_id`: NFT ID
 - **Description**: Retrieves all newbie quests and their statuses for an NFT.
 
-### Get Wallets and Points
+Certainly! Here’s the documentation for the `/get-names-and-points` endpoint in the style you requested:
 
-- **URL**: `/get-wallets-and-points`
+### Get Names and Points
+
+- **URL**: `/get-names-and-points`
 - **Method**: `GET`
-- **Description**: Aggregates and retrieves total reward points for all wallets and NFTs, grouped by playerName.
+- **Description**: Aggregates and retrieves total reward points for all wallets and NFTs, grouped by `wallet` for wallets and `nft_id` for NFTs, along with the associated player names.
 
+#### Response Example:
+
+```json
+[
+  {
+    "wallet": "0x123abc...",
+    "totalRewardPoints": 120,
+    "playerName": "John Doe"
+  },
+  {
+    "nft_id": "nft_456def...",
+    "totalRewardPoints": 150,
+    "playerName": "Jane Doe"
+  }
+]
+```
 
 ## Running the Cron Job (Optional)
 
