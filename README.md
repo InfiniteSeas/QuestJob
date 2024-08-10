@@ -1,4 +1,3 @@
-
 # Quest Tracker Service
 
 This project is a Node.js application that tracks quests and rewards for users. It uses Express.js for the server, Mongoose for MongoDB interaction, and Winston for logging.
@@ -8,11 +7,12 @@ This project is a Node.js application that tracks quests and rewards for users. 
 - Add a new wallet and initialize quest entries.
 - Check the status of a specific quest for a wallet.
 - Retrieve all quests and their statuses for a wallet.
-- Aggregate and retrieve total reward points for all wallets.
+- Retrieve all quests and their statuses for an NFT.
+- Retrieve all newbie quests and their statuses for a wallet.
+- Retrieve all newbie quests and their statuses for an NFT.
+- Aggregate and retrieve total reward points for all wallets and NFTs.
 - Retrieve all NFTs' image URLs and account addresses.
 - Retrieve the image URL for a specific account address.
-- Mark the `claimedIsland` quest as completed for a wallet.
-- Check and update newbie quests for players.
 
 ## Prerequisites
 
@@ -35,6 +35,7 @@ Create a `.env` file in the root directory and add the following environment var
 ```env
 MONGODB_URI=your_mongodb_uri
 INDEXER_BASE_URL=http://47.96.81.197:8809/api/
+MAP_ID=your_map_id
 ```
 
 Replace `your_mongodb_uri` with your actual MongoDB connection string.
@@ -66,6 +67,7 @@ npm run start:cron:dev
     "playerName": "your_player_name"
   }
   ```
+- **Description**: Adds a new wallet and initializes quest entries.
 
 ### Check Quest
 
@@ -74,6 +76,16 @@ npm run start:cron:dev
 - **Query Parameters**:
   - `wallet`: Wallet address
   - `quest`: Quest name
+- **Description**: Checks if a specific quest is completed for a wallet.
+
+### Check Quest for NFT
+
+- **URL**: `/check-quest-nft`
+- **Method**: `GET`
+- **Query Parameters**:
+  - `nft_id`: NFT ID
+  - `quest`: Quest name
+- **Description**: Checks if a specific quest is completed for an NFT.
 
 ### Get All Quests for a Wallet
 
@@ -81,6 +93,16 @@ npm run start:cron:dev
 - **Method**: `GET`
 - **Query Parameters**:
   - `wallet`: Wallet address
+- **Description**: Retrieves all quests and their statuses for a wallet.
+
+### Get All Quests for an NFT
+
+- **URL**: `/get-all-quests-nft`
+- **Method**: `GET`
+- **Query Parameters**:
+  - `wallet`: Wallet address
+  - `nft_id`: NFT ID
+- **Description**: Retrieves all quests and their statuses for an NFT.
 
 ### Get All New Player Quests for a Wallet
 
@@ -88,11 +110,22 @@ npm run start:cron:dev
 - **Method**: `GET`
 - **Query Parameters**:
   - `wallet`: Wallet address
+- **Description**: Retrieves all newbie quests and their statuses for a wallet.
+
+### Get All New Player Quests for an NFT
+
+- **URL**: `/get-all-newplayer-quests-nft`
+- **Method**: `GET`
+- **Query Parameters**:
+  - `wallet`: Wallet address
+  - `nft_id`: NFT ID
+- **Description**: Retrieves all newbie quests and their statuses for an NFT.
 
 ### Get Wallets and Points
 
 - **URL**: `/get-wallets-and-points`
 - **Method**: `GET`
+- **Description**: Aggregates and retrieves total reward points for all wallets and NFTs, grouped by playerName.
 
 ### Get All NFTs' Image URLs and Account Addresses
 
@@ -108,18 +141,7 @@ npm run start:cron:dev
   - `account_address`: Account address
 - **Description**: Retrieves the image URL for the specified account address.
 
-### Mark Claimed Island Quest as Completed
-
-- **URL**: `/complete-claimedIsland`
-- **Method**: `POST`
-- **Body**:
-  ```json
-  {
-    "wallet": "your_wallet_address"
-  }
-  ```
-
-### Running the Cron Job (Optional)
+## Running the Cron Job (Optional)
 
 If you need to manually trigger the cron job from another server, you can use the following endpoint:
 
