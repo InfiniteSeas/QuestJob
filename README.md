@@ -4,15 +4,12 @@ This project is a Node.js application that tracks quests and rewards for users. 
 
 ## Features
 
-- Add a new wallet and initialize quest entries.
 - Check the status of a specific quest for a wallet.
 - Retrieve all quests and their statuses for a wallet.
 - Retrieve all quests and their statuses for an NFT.
 - Retrieve all newbie quests and their statuses for a wallet.
 - Retrieve all newbie quests and their statuses for an NFT.
 - Aggregate and retrieve total reward points for all wallets and NFTs.
-- Retrieve all NFTs' image URLs and account addresses.
-- Retrieve the image URL for a specific account address.
 
 ## Prerequisites
 
