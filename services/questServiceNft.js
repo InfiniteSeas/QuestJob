@@ -193,6 +193,55 @@ async function checkFaucetForDailyQuestNft(playerAddr, nft_id, playerName) {
   }
 }
 
+async function checkFaucetForDailyQuestNftBatch(playerAddrList) {
+  const playerAddrMap = {}; // Mapping of playerAddr to nft_id
+
+  // Constructing the batch request body
+  const senderAddresses = playerAddrList.map(({ playerAddr, nft_id }) => {
+    playerAddrMap[playerAddr] = nft_id;
+    return playerAddr;
+  });
+
+  try {
+    const { data: faucetRecords } = await axios.post(
+      `${INDEXER_BASE_URL}/contractEvents/batchFaucetRequestedEvents`,
+      {
+        startAt,
+        endAt: endedAt,
+        senderAddresses,
+      }
+    );
+
+    for (const record of faucetRecords) {
+      const { suiSender } = record;
+
+      const nft_id = playerAddrMap[suiSender];
+
+      // Check if the quest is already completed today for the nft_id
+      if (await isQuestCompletedToday(nft_id, "claim_energy")) {
+        logger.info(
+          `Quest 'claim_energy' already completed today for ${suiSender}`
+        );
+        continue; // Skip to the next record
+      }
+
+      const completed = suiSender === nft_id;
+      const points = completed ? getRewardPoints("claim_energy") : 0;
+
+      await updateQuestProgressInDB(
+        nft_id,
+        "claim_energy",
+        points,
+        completed,
+        ""
+      );
+    }
+    logger.info("Batch faucet quest progress updated for all NFTs");
+  } catch (error) {
+    logger.error(`Error checking batch faucet quests: ${error.message}`);
+  }
+}
+
 async function checkCombatToPVEForDailyQuestNft(
   playerAddr,
   nft_id,
@@ -278,4 +327,5 @@ module.exports = {
   checkCombatToPVEForDailyQuestNft,
   checkCombatToPVPForDailyQuestNft,
   getIdAndWalletsFromNFT,
+  checkFaucetForDailyQuestNftBatch,
 };

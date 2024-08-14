@@ -215,6 +215,50 @@ async function checkFaucetForDailyQuest(playerAddr, playerName) {
   }
 }
 
+async function checkFaucetForDailyQuestBatch(playerAddrList) {
+  const senderAddresses = playerAddrList.map(({ playerAddr }) => {
+    return playerAddr;
+  });
+
+  try {
+    const { data: faucetRecords } = await axios.post(
+      `${INDEXER_BASE_URL}/contractEvents/batchFaucetRequestedEvents`,
+      {
+        startAt,
+        endAt: endedAt,
+        senderAddresses,
+      }
+    );
+
+    for (const record of faucetRecords) {
+      const playerAddr = record.suiSender;
+
+      // Check if the quest is already completed today for the player
+      if (await isQuestCompletedToday(playerAddr, "claim_energy")) {
+        logger.info(
+          `Quest 'claim_energy' already completed today for ${playerAddr}`
+        );
+        continue;
+      }
+
+      const completed = record.suiSender === playerAddr;
+      const points = completed ? getRewardPoints("claim_energy") : 0;
+
+      await updateQuestProgressInDB(
+        playerAddr,
+        "claim_energy",
+        points,
+        completed,
+        ""
+      );
+    }
+
+    logger.info("Batch faucet quest progress updated for all players");
+  } catch (error) {
+    logger.error(`Error checking batch faucet quests: ${error.message}`);
+  }
+}
+
 async function checkCombatToPVEForDailyQuest(playerAddr, playerName) {
   if (await isQuestCompletedToday(playerAddr, "battle_pve")) {
     logger.info(`Quest 'battle_pve' already completed today for ${playerAddr}`);
@@ -293,4 +337,5 @@ module.exports = {
   checkCombatToPVPForDailyQuest,
   getWalletsFromWhitelist,
   getPlayerNameByAddress,
+  checkFaucetForDailyQuestBatch,
 };

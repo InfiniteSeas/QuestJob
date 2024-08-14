@@ -11,6 +11,7 @@ const {
   checkCombatToPVPForDailyQuest,
   getWalletsFromWhitelist,
   getPlayerNameByAddress,
+  checkFaucetForDailyQuestBatch,
 } = require("./services/questService");
 const {
   checkCraftForDailyQuestNft,
@@ -18,6 +19,7 @@ const {
   checkCombatToPVEForDailyQuestNft,
   checkCombatToPVPForDailyQuestNft,
   getIdAndWalletsFromNFT,
+  checkFaucetForDailyQuestNftBatch,
 } = require("./services/questServiceNft");
 const { runNewbieQuestsForPlayer } = require("./services/newbieQuestService");
 const {
@@ -29,6 +31,10 @@ dbConnect();
 const updateQuestProgress = async () => {
   try {
     const wallets = await getWalletsFromWhitelist();
+
+    const playerAddrList = wallets.map((wallet) => ({ playerAddr: wallet }));
+
+    await checkFaucetForDailyQuestBatch(playerAddrList);
 
     for (const wallet of wallets) {
       // Check if a quest exists for this wallet
@@ -66,6 +72,13 @@ const updateQuestProgress = async () => {
 const updateQuestNftProgress = async () => {
   try {
     const nftData = await getIdAndWalletsFromNFT();
+
+    const playerAddrNftList = nftData.map(({ owner, id }) => ({
+      playerAddr: owner,
+      nft_id: id,
+    }));
+
+    await checkFaucetForDailyQuestNftBatch(playerAddrNftList);
 
     for (const { owner: playerAddr, id } of nftData) {
       // Check if a quest exists for this wallet
