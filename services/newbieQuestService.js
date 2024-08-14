@@ -87,12 +87,12 @@ async function updateQuestProgressInDB(
   });
 
   if (!questProgress) {
-    if (!playerName) {
-      logger.info(
-        `Skipping creation of quest progress for ${playerAddr} - ${questName} as playerName is not provided`
-      );
-      return;
-    }
+    // if (!playerName) {
+    //   logger.info(
+    //     `Skipping creation of quest progress for ${playerAddr} - ${questName} as playerName is not provided`
+    //   );
+    //   return;
+    // }
 
     await NewPlayerQuest.create({
       wallet: playerAddr,
