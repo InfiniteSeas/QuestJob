@@ -229,7 +229,6 @@ async function checkFaucetForDailyQuestBatch(playerAddrList) {
         senderAddresses,
       }
     );
-
     for (const record of faucetRecords) {
       const playerAddr = record.suiSender;
 
@@ -241,7 +240,7 @@ async function checkFaucetForDailyQuestBatch(playerAddrList) {
         continue;
       }
 
-      const completed = record.suiSender === playerAddr;
+      const completed = true;
       const points = completed ? getRewardPoints("claim_energy") : 0;
 
       await updateQuestProgressInDB(
