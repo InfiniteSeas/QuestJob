@@ -225,7 +225,7 @@ async function checkFaucetForDailyQuestNftBatch(playerAddrList) {
         continue; // Skip to the next record
       }
 
-      const completed = suiSender === nft_id;
+      const completed = true;
       const points = completed ? getRewardPoints("claim_energy") : 0;
 
       await updateQuestProgressInDB(
