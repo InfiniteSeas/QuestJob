@@ -36,33 +36,33 @@ const updateQuestProgress = async () => {
 
     await checkFaucetForDailyQuestBatch(playerAddrList);
 
-    for (const wallet of wallets) {
-      // Check if a quest exists for this wallet
-      const quest = await QuestProgress.findOne({ wallet: wallet });
+    // for (const wallet of wallets) {
+    //   // Check if a quest exists for this wallet
+    //   const quest = await QuestProgress.findOne({ wallet: wallet });
 
-      let playerName;
-      if (quest && quest.playerName) {
-        // If quest exists and has a playerName, use it
-        playerName = quest.playerName;
-      } else {
-        // If no quest or no playerName, fetch it
-        playerName = await getPlayerNameByAddress(playerAddr);
-      }
+    //   let playerName;
+    //   if (quest && quest.playerName) {
+    //     // If quest exists and has a playerName, use it
+    //     playerName = quest.playerName;
+    //   } else {
+    //     // If no quest or no playerName, fetch it
+    //     playerName = await getPlayerNameByAddress(playerAddr);
+    //   }
 
-      // Only process quests if playerName is not empty
-      // if (playerName) {
-      await checkCraftForDailyQuest(wallet, playerName);
-      await checkFaucetForDailyQuest(wallet, playerName);
-      await checkCombatToPVEForDailyQuest(wallet, playerName);
-      await checkCombatToPVPForDailyQuest(wallet, playerName);
-      // Check and update newbie quests progress
-      await runNewbieQuestsForPlayer(wallet, playerName);
-      // } else {
-      //   logger.info(
-      //     `Skipping quest processing for ${playerAddr} as playerName is empty.`
-      //   );
-      // }
-    }
+    //   // Only process quests if playerName is not empty
+    //   // if (playerName) {
+    //   await checkCraftForDailyQuest(wallet, playerName);
+    //   await checkFaucetForDailyQuest(wallet, playerName);
+    //   await checkCombatToPVEForDailyQuest(wallet, playerName);
+    //   await checkCombatToPVPForDailyQuest(wallet, playerName);
+    //   // Check and update newbie quests progress
+    //   await runNewbieQuestsForPlayer(wallet, playerName);
+    //   // } else {
+    //   //   logger.info(
+    //   //     `Skipping quest processing for ${playerAddr} as playerName is empty.`
+    //   //   );
+    //   // }
+    // }
     logger.info("Quest progress updated for all wallets");
   } catch (error) {
     logger.error(`Error processing quests: ${error.message}`);
@@ -80,34 +80,34 @@ const updateQuestNftProgress = async () => {
 
     await checkFaucetForDailyQuestNftBatch(playerAddrNftList);
 
-    for (const { owner: playerAddr, id } of nftData) {
-      // Check if a quest exists for this wallet
-      const quest = await QuestProgressNft.findOne({ nft_id: id });
+    // for (const { owner: playerAddr, id } of nftData) {
+    //   // Check if a quest exists for this wallet
+    //   const quest = await QuestProgressNft.findOne({ nft_id: id });
 
-      let playerName;
-      if (quest && quest.playerName) {
-        // If quest exists and has a playerName, use it
-        playerName = quest.playerName;
-      } else {
-        // If no quest or no playerName, fetch it
-        playerName = await getPlayerNameByAddress(playerAddr);
-      }
+    //   let playerName;
+    //   if (quest && quest.playerName) {
+    //     // If quest exists and has a playerName, use it
+    //     playerName = quest.playerName;
+    //   } else {
+    //     // If no quest or no playerName, fetch it
+    //     playerName = await getPlayerNameByAddress(playerAddr);
+    //   }
 
-      // Only process quests if playerName is not empty
-      // if (playerName) {
-      await checkCraftForDailyQuestNft(playerAddr, id, playerName);
-      await checkFaucetForDailyQuestNft(playerAddr, id, playerName);
-      await checkCombatToPVEForDailyQuestNft(playerAddr, id, playerName);
-      await checkCombatToPVPForDailyQuestNft(playerAddr, id, playerName);
+    //   // Only process quests if playerName is not empty
+    //   // if (playerName) {
+    //   await checkCraftForDailyQuestNft(playerAddr, id, playerName);
+    //   await checkFaucetForDailyQuestNft(playerAddr, id, playerName);
+    //   await checkCombatToPVEForDailyQuestNft(playerAddr, id, playerName);
+    //   await checkCombatToPVPForDailyQuestNft(playerAddr, id, playerName);
 
-      // Check and update newbie quests progress
-      await runNewbieQuestsForPlayerNft(playerAddr, id, playerName);
-      // } else {
-      //   logger.info(
-      //     `Skipping quest processing for ${playerAddr} as playerName is empty.`
-      //   );
-      // }
-    }
+    //   // Check and update newbie quests progress
+    //   await runNewbieQuestsForPlayerNft(playerAddr, id, playerName);
+    //   // } else {
+    //   //   logger.info(
+    //   //     `Skipping quest processing for ${playerAddr} as playerName is empty.`
+    //   //   );
+    //   // }
+    // }
     logger.info("Quest progress updated for all wallets");
   } catch (error) {
     logger.error(`Error processing quests: ${error.message}`);
