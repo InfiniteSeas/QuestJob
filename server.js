@@ -4,7 +4,7 @@ const cors = require("cors");
 const dbConnect = require("./lib/dbConnect");
 const QuestProgress = require("./models/QuestProgress");
 const NewPlayerQuest = require("./models/NewPlayerQuest");
-const QuestProgressNft = require("./models/QuestProgressNFT");
+const QuestProgressNft = require("./models/QuestProgressNft");
 const NewPlayerQuestNft = require("./models/NewPlayerQuestNft");
 const logger = require("./lib/logger");
 const {

@@ -2,7 +2,7 @@ require("dotenv").config();
 const cron = require("node-cron");
 const dbConnect = require("./lib/dbConnect");
 const QuestProgress = require("./models/QuestProgress");
-const QuestProgressNft = require("./models/QuestProgressNFT");
+const QuestProgressNft = require("./models/QuestProgressNft");
 const logger = require("./lib/logger");
 const {
   checkCraftForDailyQuest,
