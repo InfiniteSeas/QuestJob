@@ -2,7 +2,7 @@ require("dotenv").config();
 const cron = require("node-cron");
 const dbConnect = require("./lib/dbConnect");
 const QuestProgress = require("./models/QuestProgress");
-const QuestProgressNft = require("./models/NewPlayerQuestNft");
+const QuestProgressNft = require("./models/QuestProgressNFT");
 const logger = require("./lib/logger");
 const {
   checkCraftForDailyQuest,
@@ -116,18 +116,43 @@ const updateQuestNftProgress = async () => {
 
 const resetQuestProgress = async () => {
   try {
-    await QuestProgress.updateMany({}, { $set: { completedToday: false } });
-    logger.info("Reset completedToday for all quests");
+    const count = await QuestProgress.countDocuments({});
+    logger.info(`QuestProgress document count: ${count}`);
+    const matchedDocs = await QuestProgress.find({});
+    logger.info(
+      `Number of documents that QuestProgress match the filter: ${matchedDocs.length}`
+    );
+
+    const bulkOps = await QuestProgress.collection.bulkWrite([
+      {
+        updateMany: { filter: {}, update: { $set: { completedToday: false } } },
+      },
+    ]);
+    logger.info(
+      `Bulk reset QuestProgress complete results: ${JSON.stringify(bulkOps)}`
+    );
   } catch (error) {
     logger.error(`Error resetting quest progress: ${error.message}`);
   }
 };
+
 const resetQuestNftProgress = async () => {
   try {
-    await QuestProgressNft.updateMany({}, { $set: { completedToday: false } });
-    logger.info("Reset completedToday for all quests");
+    const count = await QuestProgressNft.countDocuments({});
+    logger.info(`QuestProgressNft document count: ${count}`);
+    const matchedDocs = await QuestProgressNft.find({});
+    logger.info(
+      `Number of documents that match the filter: ${matchedDocs.length}`
+    );
+
+    const bulkOps = await QuestProgressNft.collection.bulkWrite([
+      {
+        updateMany: { filter: {}, update: { $set: { completedToday: false } } },
+      },
+    ]);
+    logger.info(`Bulk reset complete results: ${JSON.stringify(bulkOps)}`);
   } catch (error) {
-    logger.error(`Error resetting quest progress: ${error.message}`);
+    logger.error(`Error resetting NFT quest progress: ${error.message}`);
   }
 };
 

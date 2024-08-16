@@ -1,6 +1,6 @@
 const axios = require("axios");
 const dbConnect = require("../lib/dbConnect");
-const QuestProgressNft = require("../models/QuestProgressNft");
+const QuestProgressNft = require("../models/QuestProgressNFT");
 const logger = require("../lib/logger");
 
 const INDEXER_BASE_URL = process.env.INDEXER_BASE_URL || "";
