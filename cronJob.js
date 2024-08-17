@@ -156,9 +156,9 @@ const resetQuestNftProgress = async () => {
   }
 };
 
-// Schedule the cron job to run every day at 12:01 AM UTC
-cron.schedule("1 0 * * *", resetQuestProgress);
-cron.schedule("1 0 * * *", resetQuestNftProgress);
+// Schedule the cron job to run every day at 12:02 AM UTC
+cron.schedule("2 0 * * *", resetQuestProgress);
+cron.schedule("2 0 * * *", resetQuestNftProgress);
 
 // Schedule the cron job to run every day at 10 PM UTC
 // cron.schedule("0 22 * * *", updateQuestProgress);
