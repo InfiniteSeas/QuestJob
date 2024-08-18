@@ -123,7 +123,7 @@ async function updateQuestProgressInDB(
 async function checkCraftForDailyQuestNft(playerAddr, nft_id, playerName) {
   if (await isQuestCompletedToday(nft_id, "craft_ships")) {
     logger.info(
-      `Quest 'craft_ships' already completed today for ${playerAddr}`
+      `Quest 'craft_ships' already completed today for ${playerAddr} - for day ${startAt} - ${endedAt}`
     );
     return;
   }
@@ -159,7 +159,7 @@ async function checkCraftForDailyQuestNft(playerAddr, nft_id, playerName) {
 async function checkFaucetForDailyQuestNft(playerAddr, nft_id, playerName) {
   if (await isQuestCompletedToday(nft_id, "claim_energy")) {
     logger.info(
-      `Quest 'claim_energy' already completed today for ${playerAddr}`
+      `Quest 'claim_energy' already completed today for ${playerAddr} - for day ${startAt} - ${endedAt}`
     );
     return;
   }
@@ -220,7 +220,7 @@ async function checkFaucetForDailyQuestNftBatch(playerAddrList) {
       // Check if the quest is already completed today for the nft_id
       if (await isQuestCompletedToday(nft_id, "claim_energy")) {
         logger.info(
-          `Quest 'claim_energy' already completed today for ${suiSender}`
+          `Quest 'claim_energy' already completed today for ${suiSender} - for day ${startAt} - ${endedAt}`
         );
         continue; // Skip to the next record
       }
@@ -248,7 +248,9 @@ async function checkCombatToPVEForDailyQuestNft(
   playerName
 ) {
   if (await isQuestCompletedToday(nft_id, "battle_pve")) {
-    logger.info(`Quest 'battle_pve' already completed today for ${playerAddr}`);
+    logger.info(
+      `Quest 'battle_pve' already completed today for ${playerAddr} - for day ${startAt} - ${endedAt}`
+    );
     return;
   }
   try {
@@ -286,7 +288,9 @@ async function checkCombatToPVPForDailyQuestNft(
   playerName
 ) {
   if (await isQuestCompletedToday(nft_id, "battle_pvp")) {
-    logger.info(`Quest 'battle_pvp' already completed today for ${playerAddr}`);
+    logger.info(
+      `Quest 'battle_pvp' already completed today for ${playerAddr} - for day ${startAt} - ${endedAt}`
+    );
     return;
   }
   try {
