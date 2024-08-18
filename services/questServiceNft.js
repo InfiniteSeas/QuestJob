@@ -213,7 +213,7 @@ async function checkFaucetForDailyQuestNftBatch(playerAddrList) {
     );
 
     for (const record of faucetRecords) {
-      const { suiSender } = record;
+      const { suiSender, suiTimestamp } = record;
 
       const nft_id = playerAddrMap[suiSender];
 
@@ -225,16 +225,22 @@ async function checkFaucetForDailyQuestNftBatch(playerAddrList) {
         continue; // Skip to the next record
       }
 
-      const completed = true;
-      const points = completed ? getRewardPoints("claim_energy") : 0;
+      if (startAt <= suiTimestamp <= endedAt) {
+        const completed = true;
+        const points = completed ? getRewardPoints("claim_energy") : 0;
 
-      await updateQuestProgressInDB(
-        nft_id,
-        "claim_energy",
-        points,
-        completed,
-        ""
-      );
+        await updateQuestProgressInDB(
+          nft_id,
+          "claim_energy",
+          points,
+          completed,
+          ""
+        );
+      } else {
+        logger.info(
+          `Quest 'claim_energy' already completed today for ${suiSender} - for day ${startAt} - ${endedAt}`
+        );
+      }
     }
     logger.info("Batch faucet quest progress updated for all NFTs");
   } catch (error) {
