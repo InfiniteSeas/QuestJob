@@ -5,33 +5,25 @@ const logger = require("../lib/logger");
 
 const INDEXER_BASE_URL = process.env.INDEXER_BASE_URL || "";
 
-const getUnixTimestamp = (
-  year,
-  month,
-  day,
-  hour = 0,
-  minute = 0,
-  second = 0
-) => {
-  return Date.UTC(year, month - 1, day, hour, minute, second);
-};
+// Function to get the current start and end timestamps
+function getStartAndEndTimestamps() {
+  const currentDate = new Date();
+  const currentYear = currentDate.getUTCFullYear();
+  const currentMonth = currentDate.getUTCMonth() + 1; // getUTCMonth() returns month from 0-11
+  const currentDay = currentDate.getUTCDate();
 
-// Current date
-const currentDate = new Date();
-const currentYear = currentDate.getUTCFullYear();
-const currentMonth = currentDate.getUTCMonth() + 1; // getUTCMonth() returns month from 0-11
-const currentDay = currentDate.getUTCDate();
+  const startAt = Date.UTC(currentYear, currentMonth - 1, currentDay, 0, 1); // 12:01 AM today UTC
+  const endedAt = Date.UTC(
+    currentYear,
+    currentMonth - 1,
+    currentDay + 1,
+    0,
+    0,
+    59
+  ); // 12:00:59 AM tomorrow UTC
 
-// Adjusted times to match the new reset period
-const startAt = getUnixTimestamp(currentYear, currentMonth, currentDay, 0, 1); // 12:01 AM today UTC
-const endedAt = getUnixTimestamp(
-  currentYear,
-  currentMonth,
-  currentDay + 1,
-  0,
-  0,
-  59
-); // 12:00:59 AM tomorrow UTC
+  return { startAt, endedAt };
+}
 
 const getRewardPoints = (questName) => {
   switch (questName) {
@@ -87,13 +79,6 @@ async function updateQuestProgressInDB(
   });
 
   if (!questProgress) {
-    // if (!playerName) {
-    //   logger.info(
-    //     `Skipping creation of quest progress for ${nft_id} - ${questName} as playerName is not provided`
-    //   );
-    //   return;
-    // }
-
     await QuestProgressNft.create({
       nft_id: nft_id,
       questName,
@@ -121,6 +106,8 @@ async function updateQuestProgressInDB(
 }
 
 async function checkCraftForDailyQuestNft(playerAddr, nft_id, playerName) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
   if (await isQuestCompletedToday(nft_id, "craft_ships")) {
     logger.info(
       `Quest 'craft_ships' already completed today for ${playerAddr} - for day ${startAt} - ${endedAt}`
@@ -157,6 +144,8 @@ async function checkCraftForDailyQuestNft(playerAddr, nft_id, playerName) {
 }
 
 async function checkFaucetForDailyQuestNft(playerAddr, nft_id, playerName) {
+  const { startAt, endedAt } = getStartAndEndTtimestamps();
+
   if (await isQuestCompletedToday(nft_id, "claim_energy")) {
     logger.info(
       `Quest 'claim_energy' already completed today for ${playerAddr} - for day ${startAt} - ${endedAt}`
@@ -195,6 +184,7 @@ async function checkFaucetForDailyQuestNft(playerAddr, nft_id, playerName) {
 
 async function checkFaucetForDailyQuestNftBatch(playerAddrList) {
   const playerAddrMap = {}; // Mapping of playerAddr to nft_id
+  const { startAt, endedAt } = getStartAndEndTimestamps();
 
   // Constructing the batch request body
   const senderAddresses = playerAddrList.map(({ playerAddr, nft_id }) => {
@@ -225,7 +215,7 @@ async function checkFaucetForDailyQuestNftBatch(playerAddrList) {
         continue; // Skip to the next record
       }
 
-      if (startAt <= suiTimestamp <= endedAt) {
+      if (startAt <= suiTimestamp && suiTimestamp <= endedAt) {
         const completed = true;
         const points = completed ? getRewardPoints("claim_energy") : 0;
 
@@ -253,6 +243,8 @@ async function checkCombatToPVEForDailyQuestNft(
   nft_id,
   playerName
 ) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
   if (await isQuestCompletedToday(nft_id, "battle_pve")) {
     logger.info(
       `Quest 'battle_pve' already completed today for ${playerAddr} - for day ${startAt} - ${endedAt}`
@@ -293,6 +285,8 @@ async function checkCombatToPVPForDailyQuestNft(
   nft_id,
   playerName
 ) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
   if (await isQuestCompletedToday(nft_id, "battle_pvp")) {
     logger.info(
       `Quest 'battle_pvp' already completed today for ${playerAddr} - for day ${startAt} - ${endedAt}`

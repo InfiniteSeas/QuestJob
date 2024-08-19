@@ -17,22 +17,25 @@ const getUnixTimestamp = (
   return Date.UTC(year, month - 1, day, hour, minute, second);
 };
 
-// Current date
-const currentDate = new Date();
-const currentYear = currentDate.getUTCFullYear();
-const currentMonth = currentDate.getUTCMonth() + 1; // getUTCMonth() returns month from 0-11
-const currentDay = currentDate.getUTCDate();
+// Function to get the current start and end timestamps
+function getStartAndEndTimestamps() {
+  const currentDate = new Date();
+  const currentYear = currentDate.getUTCFullYear();
+  const currentMonth = currentDate.getUTCMonth() + 1; // getUTCMonth() returns month from 0-11
+  const currentDay = currentDate.getUTCDate();
 
-// Adjusted times to match the new reset period
-const startAt = getUnixTimestamp(currentYear, currentMonth, currentDay, 0, 1); // 12:01 AM today UTC
-const endedAt = getUnixTimestamp(
-  currentYear,
-  currentMonth,
-  currentDay + 1,
-  0,
-  0,
-  59
-); // 12:00:59 AM tomorrow UTC
+  const startAt = Date.UTC(currentYear, currentMonth - 1, currentDay, 0, 1); // 12:01 AM today UTC
+  const endedAt = Date.UTC(
+    currentYear,
+    currentMonth - 1,
+    currentDay + 1,
+    0,
+    0,
+    59
+  ); // 12:00:59 AM tomorrow UTC
+
+  return { startAt, endedAt };
+}
 
 const getRewardPoints = (questName) => {
   switch (questName) {
@@ -73,13 +76,6 @@ async function updateQuestProgressInDB(
   });
 
   if (!questProgress) {
-    // if (!playerName) {
-    //   logger.info(
-    //     `Skipping creation of quest progress for ${playerAddr} - ${questName} as playerName is not provided`
-    //   );
-    //   return;
-    // }
-
     await QuestProgress.create({
       wallet: playerAddr,
       questName,
@@ -143,6 +139,8 @@ async function getPlayerNameByAddress(playerAddr) {
 }
 
 async function checkCraftForDailyQuest(playerAddr, playerName) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
   if (await isQuestCompletedToday(playerAddr, "craft_ships")) {
     logger.info(
       `Quest 'craft_ships' already completed today for ${playerAddr}`
@@ -179,6 +177,8 @@ async function checkCraftForDailyQuest(playerAddr, playerName) {
 }
 
 async function checkFaucetForDailyQuest(playerAddr, playerName) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
   if (await isQuestCompletedToday(playerAddr, "claim_energy")) {
     logger.info(
       `Quest 'claim_energy' already completed today for ${playerAddr}`
@@ -220,6 +220,8 @@ async function checkFaucetForDailyQuestBatch(playerAddrList) {
     return playerAddr;
   });
 
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
   try {
     const { data: faucetRecords } = await axios.post(
       `${INDEXER_BASE_URL}/contractEvents/batchFaucetRequestedEvents`,
@@ -259,6 +261,8 @@ async function checkFaucetForDailyQuestBatch(playerAddrList) {
 }
 
 async function checkCombatToPVEForDailyQuest(playerAddr, playerName) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
   if (await isQuestCompletedToday(playerAddr, "battle_pve")) {
     logger.info(`Quest 'battle_pve' already completed today for ${playerAddr}`);
     return;
@@ -293,6 +297,8 @@ async function checkCombatToPVEForDailyQuest(playerAddr, playerName) {
 }
 
 async function checkCombatToPVPForDailyQuest(playerAddr, playerName) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
   if (await isQuestCompletedToday(playerAddr, "battle_pvp")) {
     logger.info(`Quest 'battle_pvp' already completed today for ${playerAddr}`);
     return;
