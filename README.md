@@ -109,7 +109,7 @@ Certainly! Here’s the documentation for the `/get-names-and-points` endpoint i
 
 ### Get Names and Points
 
-- **URL**: `/get-names-and-points`
+- **URL**: `/get-leaderboard`
 - **Method**: `GET`
 - **Description**: Aggregates and retrieves total reward points for all wallets and NFTs, grouped by `wallet` for wallets and `nft_id` for NFTs, along with the associated player names.
 
