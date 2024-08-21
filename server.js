@@ -40,7 +40,7 @@ const app = express();
 
 const NFT = require("./models/nft"); // Ensure you import the NFT model
 
-const port = process.env.PORT || 3002;
+const port = process.env.PORT || 3001;
 
 // TODO: ADD Sailing on daily
 
