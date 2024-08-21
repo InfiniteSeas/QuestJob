@@ -12,9 +12,13 @@ const {
   checkFaucetForDailyQuest,
   checkCombatToPVEForDailyQuest,
   checkCombatToPVPForDailyQuest,
+  checkCraftForDailyQuestBatch,
+  checkFaucetForDailyQuestBatch,
+  checkCombatToPVEForDailyQuestBatch,
+  checkCombatToPVPForDailyQuestBatch,
   getWalletsFromWhitelist,
   getPlayerNameByAddress,
-  checkFaucetForDailyQuestBatch,
+  getPlayerNamesByAddresses,
 } = require("./services/questService");
 const { runNewbieQuestsForPlayer } = require("./services/newbieQuestService");
 const {
@@ -22,8 +26,11 @@ const {
   checkFaucetForDailyQuestNft,
   checkCombatToPVEForDailyQuestNft,
   checkCombatToPVPForDailyQuestNft,
-  getIdAndWalletsFromNFT,
+  checkCraftForDailyQuestNftBatch,
   checkFaucetForDailyQuestNftBatch,
+  checkCombatToPVEForDailyQuestNftBatch,
+  checkCombatToPVPForDailyQuestNftBatch,
+  getIdAndWalletsFromNFT,
 } = require("./services/questServiceNft");
 const {
   runNewbieQuestsForPlayerNft,
@@ -33,7 +40,7 @@ const app = express();
 
 const NFT = require("./models/nft"); // Ensure you import the NFT model
 
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3002;
 
 // TODO: ADD Sailing on daily
 
@@ -513,18 +520,43 @@ app.get("/get-faucet-leaderboard", async (req, res) => {
   try {
     // Fetch NFT data and wallet data
     const nftData = await getIdAndWalletsFromNFT();
-    const wallets = await getWalletsFromWhitelist();
 
-    // Prepare the player address list for both batch functions
-    const playerAddrList = wallets.map((wallet) => ({ playerAddr: wallet }));
+    // Extract the addresses and get player names
+    const walletAddresses = nftData.map(({ owner }) => owner);
+    const playerNamesMapNft = await getPlayerNamesByAddresses(walletAddresses);
+
+    // Create the player address and NFT list with names
     const playerAddrNftList = nftData.map(({ owner, id }) => ({
       playerAddr: owner,
       nft_id: id,
+      playerName: playerNamesMapNft[owner] || "",
     }));
 
-    // Call the batch functions to update the faucet quest progress
-    await checkFaucetForDailyQuestBatch(playerAddrList);
-    await checkFaucetForDailyQuestNftBatch(playerAddrNftList);
+    const wallets = await getWalletsFromWhitelist();
+    // Get player names for the wallets
+    const playerNamesMap = await getPlayerNamesByAddresses(wallets);
+
+    // Create the player address list with names
+    const playerAddrList = wallets.map((wallet) => ({
+      playerAddr: wallet,
+      playerName: playerNamesMap[wallet] || "",
+    }));
+
+    // Call all batch functions for NFT quests
+    await Promise.all([
+      checkCraftForDailyQuestNftBatch(playerAddrNftList),
+      checkFaucetForDailyQuestNftBatch(playerAddrNftList),
+      checkCombatToPVEForDailyQuestNftBatch(playerAddrNftList),
+      checkCombatToPVPForDailyQuestNftBatch(playerAddrNftList),
+    ]);
+
+    // Call all batch functions for non-NFT quests
+    await Promise.all([
+      checkCraftForDailyQuestBatch(playerAddrList),
+      checkFaucetForDailyQuestBatch(playerAddrList),
+      checkCombatToPVEForDailyQuestBatch(playerAddrList),
+      checkCombatToPVPForDailyQuestBatch(playerAddrList),
+    ]);
 
     // Aggregate points based on wallet for QuestProgress and NewPlayerQuest
     const dailyPoints = await QuestProgress.aggregate([
@@ -532,6 +564,7 @@ app.get("/get-faucet-leaderboard", async (req, res) => {
         $group: {
           _id: "$wallet",
           totalRewardPoints: { $sum: "$totalRewardPoints" },
+          playerName: { $first: "$playerName" }, // Get the playerName from the first entry
         },
       },
     ]);
@@ -541,6 +574,7 @@ app.get("/get-faucet-leaderboard", async (req, res) => {
         $group: {
           _id: "$wallet",
           totalRewardPoints: { $sum: "$totalRewardPoints" },
+          playerName: { $first: "$playerName" }, // Get the playerName from the first entry
         },
       },
     ]);
@@ -551,6 +585,7 @@ app.get("/get-faucet-leaderboard", async (req, res) => {
         $group: {
           _id: "$nft_id",
           totalRewardPoints: { $sum: "$totalRewardPoints" },
+          playerName: { $first: "$playerName" }, // Get the playerName from the first entry
         },
       },
     ]);
@@ -560,6 +595,7 @@ app.get("/get-faucet-leaderboard", async (req, res) => {
         $group: {
           _id: "$nft_id",
           totalRewardPoints: { $sum: "$totalRewardPoints" },
+          playerName: { $first: "$playerName" }, // Get the playerName from the first entry
         },
       },
     ]);
@@ -573,6 +609,7 @@ app.get("/get-faucet-leaderboard", async (req, res) => {
         wallet: daily._id,
         totalRewardPoints:
           daily.totalRewardPoints + (newbie ? newbie.totalRewardPoints : 0),
+        playerName: daily.playerName,
       };
     });
 
@@ -583,6 +620,7 @@ app.get("/get-faucet-leaderboard", async (req, res) => {
         combinedWalletPoints.push({
           wallet: newbie._id,
           totalRewardPoints: newbie.totalRewardPoints,
+          playerName: newbie.playerName,
         });
       }
     });
@@ -597,6 +635,7 @@ app.get("/get-faucet-leaderboard", async (req, res) => {
         totalRewardPoints:
           dailyNft.totalRewardPoints +
           (newbieNft ? newbieNft.totalRewardPoints : 0),
+        playerName: dailyNft.playerName,
       };
     });
 
@@ -607,6 +646,7 @@ app.get("/get-faucet-leaderboard", async (req, res) => {
         combinedNftPoints.push({
           nft_id: newbieNft._id,
           totalRewardPoints: newbieNft.totalRewardPoints,
+          playerName: newbieNft.playerName,
         });
       }
     });
