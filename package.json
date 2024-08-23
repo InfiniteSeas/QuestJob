@@ -7,8 +7,8 @@
     "start:dev": "nodemon server.js",
     "start:cron": "node cronJob.js",
     "start:cron:dev": "nodemon cronJob.js",
-    "start:prod": "pm2 start server.js --name quest-tracker-m2",
-    "start:cron:prod": "pm2 start cronJob.js --name quest-cron-m2"
+    "start:prod": "pm2 start server.js --name quest-tracker-m2-test",
+    "start:cron:prod": "pm2 start cronJob.js --name quest-cron-m2-test"
   },
   "keywords": [],
   "author": "",

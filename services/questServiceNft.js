@@ -182,62 +182,6 @@ async function checkFaucetForDailyQuestNft(playerAddr, nft_id, playerName) {
   }
 }
 
-async function checkFaucetForDailyQuestNftBatch(playerAddrList) {
-  const playerAddrMap = {}; // Mapping of playerAddr to nft_id
-  const { startAt, endedAt } = getStartAndEndTimestamps();
-
-  // Constructing the batch request body
-  const senderAddresses = playerAddrList.map(({ playerAddr, nft_id }) => {
-    playerAddrMap[playerAddr] = nft_id;
-    return playerAddr;
-  });
-
-  try {
-    const { data: faucetRecords } = await axios.post(
-      `${INDEXER_BASE_URL}/contractEvents/batchFaucetRequestedEvents`,
-      {
-        startAt,
-        endAt: endedAt,
-        senderAddresses,
-      }
-    );
-
-    for (const record of faucetRecords) {
-      const { suiSender, suiTimestamp } = record;
-
-      const nft_id = playerAddrMap[suiSender];
-
-      // Check if the quest is already completed today for the nft_id
-      if (await isQuestCompletedToday(nft_id, "claim_energy")) {
-        logger.info(
-          `Quest 'claim_energy' already completed today for ${suiSender} - for day ${startAt} - ${endedAt}`
-        );
-        continue; // Skip to the next record
-      }
-
-      if (startAt <= suiTimestamp && suiTimestamp <= endedAt) {
-        const completed = true;
-        const points = completed ? getRewardPoints("claim_energy") : 0;
-
-        await updateQuestProgressInDB(
-          nft_id,
-          "claim_energy",
-          points,
-          completed,
-          ""
-        );
-      } else {
-        logger.info(
-          `Quest 'claim_energy' already completed today for ${suiSender} - for day ${startAt} - ${endedAt}`
-        );
-      }
-    }
-    logger.info("Batch faucet quest progress updated for all NFTs");
-  } catch (error) {
-    logger.error(`Error checking batch faucet quests: ${error.message}`);
-  }
-}
-
 async function checkCombatToPVEForDailyQuestNft(
   playerAddr,
   nft_id,
@@ -325,11 +269,274 @@ async function checkCombatToPVPForDailyQuestNft(
   }
 }
 
+async function checkCraftForDailyQuestNftBatch(playerAddrList) {
+  const playerAddrMap = {}; // Mapping of playerAddr to nft_id
+  const playerNameMap = {}; // Mapping of playerAddr to playerName
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
+  // Constructing the batch request body
+  const senderAddresses = playerAddrList.map(
+    ({ playerAddr, nft_id, playerName }) => {
+      playerAddrMap[playerAddr] = nft_id;
+      playerNameMap[playerAddr] = playerName;
+      return playerAddr;
+    }
+  );
+
+  try {
+    const { data: craftRecords } = await axios.post(
+      `${INDEXER_BASE_URL}/contractEvents/batchShipProductionCompletedEvents`,
+      {
+        startAt,
+        endAt: endedAt,
+        senderAddresses,
+      }
+    );
+
+    // Create a map to count occurrences of each suiSender
+    const senderCountMap = craftRecords.reduce((acc, record) => {
+      const { suiSender } = record;
+      acc[suiSender] = (acc[suiSender] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Iterate over the player addresses and update quest progress if criteria are met
+    for (const senderAddress of senderAddresses) {
+      const nft_id = playerAddrMap[senderAddress];
+      const playerName = playerNameMap[senderAddress];
+
+      // Check if the quest is already completed today for the nft_id
+      if (await isQuestCompletedToday(nft_id, "craft_ships")) {
+        logger.info(
+          `Quest 'craft_ships' already completed today for ${senderAddress} - for day ${startAt} - ${endedAt}`
+        );
+        continue; // Skip to the next record
+      }
+
+      // Check if the senderAddress has at least 4 records
+      const completed = senderCountMap[senderAddress] >= 4;
+      const points = completed ? getRewardPoints("craft_ships") : 0;
+
+      await updateQuestProgressInDB(
+        nft_id,
+        "craft_ships",
+        points,
+        completed,
+        playerName
+      );
+    }
+
+    logger.info("Batch ship production quest progress updated for all NFTs");
+  } catch (error) {
+    logger.error(
+      `Error checking batch ship production quests: ${error.message}`
+    );
+  }
+}
+
+async function checkFaucetForDailyQuestNftBatch(playerAddrList) {
+  const playerAddrMap = {}; // Mapping of playerAddr to nft_id
+  const playerNameMap = {}; // Mapping of playerAddr to playerName
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
+  // Constructing the batch request body
+  const senderAddresses = playerAddrList.map(
+    ({ playerAddr, nft_id, playerName }) => {
+      playerAddrMap[playerAddr] = nft_id;
+      playerNameMap[playerAddr] = playerName;
+      return playerAddr;
+    }
+  );
+
+  try {
+    const { data: faucetRecords } = await axios.post(
+      `${INDEXER_BASE_URL}/contractEvents/batchFaucetRequestedEvents`,
+      {
+        startAt,
+        endAt: endedAt,
+        senderAddresses,
+      }
+    );
+
+    for (const record of faucetRecords) {
+      const { suiSender } = record;
+
+      const nft_id = playerAddrMap[suiSender];
+      const playerName = playerNameMap[suiSender];
+
+      // Check if the quest is already completed today for the nft_id
+      if (await isQuestCompletedToday(nft_id, "claim_energy")) {
+        logger.info(
+          `Quest 'claim_energy' already completed today for ${suiSender} - for day ${startAt} - ${endedAt}`
+        );
+        continue; // Skip to the next record
+      }
+
+      const completed = true;
+      const points = completed ? getRewardPoints("claim_energy") : 0;
+
+      await updateQuestProgressInDB(
+        nft_id,
+        "claim_energy",
+        points,
+        completed,
+        playerName
+      );
+    }
+    logger.info("Batch faucet quest progress updated for all NFTs");
+  } catch (error) {
+    logger.error(`Error checking batch faucet quests: ${error.message}`);
+  }
+}
+
+async function checkCombatToPVEForDailyQuestNftBatch(playerAddrList) {
+  const playerAddrMap = {}; // Mapping of playerAddr to nft_id
+  const playerNameMap = {}; // Mapping of playerAddr to playerName
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
+  // Constructing the batch request body
+  const senderAddresses = playerAddrList.map(
+    ({ playerAddr, nft_id, playerName }) => {
+      playerAddrMap[playerAddr] = nft_id;
+      playerNameMap[playerAddr] = playerName;
+      return playerAddr;
+    }
+  );
+
+  try {
+    const { data: combats } = await axios.post(
+      `${INDEXER_BASE_URL}/contractEvents/batchGetPlayerVsEnvironmentEvents`,
+      {
+        startAt,
+        endAt: endedAt,
+        senderAddresses,
+      }
+    );
+
+    // Create a map to count winning occurrences of each suiSender
+    const senderCountMap = combats.reduce((acc, record) => {
+      const { suiSender, winner } = record;
+      if (winner === 1) {
+        acc[suiSender] = (acc[suiSender] || 0) + 1;
+      }
+      return acc;
+    }, {});
+
+    // Iterate over the player addresses and update quest progress if criteria are met
+    for (const senderAddress of senderAddresses) {
+      const nft_id = playerAddrMap[senderAddress];
+      const playerName = playerNameMap[senderAddress];
+
+      // Check if the quest is already completed today for the nft_id
+      if (await isQuestCompletedToday(nft_id, "battle_pve")) {
+        logger.info(
+          `Quest 'battle_pve' already completed today for ${senderAddress} - for day ${startAt} - ${endedAt}`
+        );
+        continue; // Skip to the next record
+      }
+
+      // Check if the senderAddress has at least 3 winning records
+      const completed = senderCountMap[senderAddress] >= 3;
+      const points = completed ? getRewardPoints("battle_pve") : 0;
+
+      await updateQuestProgressInDB(
+        nft_id,
+        "battle_pve",
+        points,
+        completed,
+        playerName
+      );
+    }
+
+    logger.info("Batch PVE combat quest progress updated for all NFTs");
+  } catch (error) {
+    logger.error(`Error checking batch PVE combat quests: ${error.message}`);
+  }
+}
+
+async function checkCombatToPVPForDailyQuestNftBatch(playerAddrList) {
+  const playerAddrMap = {}; // Mapping of playerAddr to nft_id
+  const playerNameMap = {}; // Mapping of playerAddr to playerName
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
+  // Constructing the batch request body
+  const senderAddresses = playerAddrList.map(
+    ({ playerAddr, nft_id, playerName }) => {
+      playerAddrMap[playerAddr] = nft_id;
+      playerNameMap[playerAddr] = playerName;
+      return playerAddr;
+    }
+  );
+
+  try {
+    const { data: combats } = await axios.post(
+      `${INDEXER_BASE_URL}/contractEvents/batchGetPlayerVsPlayerEvents`,
+      {
+        startAt,
+        endAt: endedAt,
+        senderAddresses,
+      }
+    );
+
+    // Create a map to count winning occurrences of each suiSender
+    const senderCountMap = combats.reduce((acc, record) => {
+      const {
+        suiSender,
+        initiatorSenderAddress,
+        responderSenderAddress,
+        winner,
+      } = record;
+
+      if (
+        (initiatorSenderAddress === suiSender && winner === 1) ||
+        (responderSenderAddress === suiSender && winner === 0)
+      ) {
+        acc[suiSender] = (acc[suiSender] || 0) + 1;
+      }
+
+      return acc;
+    }, {});
+
+    // Iterate over the player addresses and update quest progress if criteria are met
+    for (const senderAddress of senderAddresses) {
+      const nft_id = playerAddrMap[senderAddress];
+      const playerName = playerNameMap[senderAddress];
+
+      // Check if the quest is already completed today for the nft_id
+      if (await isQuestCompletedToday(nft_id, "battle_pvp")) {
+        logger.info(
+          `Quest 'battle_pvp' already completed today for ${senderAddress} - for day ${startAt} - ${endedAt}`
+        );
+        continue; // Skip to the next record
+      }
+
+      // Check if the senderAddress has at least 1 winning record
+      const completed = senderCountMap[senderAddress] >= 1;
+      const points = completed ? getRewardPoints("battle_pvp") : 0;
+
+      await updateQuestProgressInDB(
+        nft_id,
+        "battle_pvp",
+        points,
+        completed,
+        playerName
+      );
+    }
+
+    logger.info("Batch PVP combat quest progress updated for all NFTs");
+  } catch (error) {
+    logger.error(`Error checking batch PVP combat quests: ${error.message}`);
+  }
+}
+
 module.exports = {
   checkCraftForDailyQuestNft,
   checkFaucetForDailyQuestNft,
   checkCombatToPVEForDailyQuestNft,
   checkCombatToPVPForDailyQuestNft,
-  getIdAndWalletsFromNFT,
+  checkCraftForDailyQuestNftBatch,
   checkFaucetForDailyQuestNftBatch,
+  checkCombatToPVEForDailyQuestNftBatch,
+  checkCombatToPVPForDailyQuestNftBatch,
+  getIdAndWalletsFromNFT,
 };
