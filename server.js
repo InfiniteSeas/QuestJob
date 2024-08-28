@@ -40,7 +40,7 @@ const app = express();
 
 const NFT = require("./models/nft"); // Ensure you import the NFT model
 
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3002;
 
 // TODO: ADD Sailing on daily
 
@@ -71,6 +71,17 @@ dbConnect();
 
 app.get("/", async (req, res) => {
   res.status(200).json({ status: true });
+});
+
+// Fetch all NFTs but only return account_address fields
+app.get("/nft-account-addresses", async (req, res) => {
+  try {
+    const nfts = await NFT.find({}, "account_address -_id"); // Select only the account_address field
+    res.json(nfts);
+  } catch (error) {
+    logger.error(`Error fetching NFT account addresses: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.get("/check-quest", async (req, res) => {
