@@ -53,6 +53,13 @@ npm run start:cron:dev
 
 ## API Endpoints
 
+### Get all NFT WL Addresses
+
+- **URL**: `/nft-account-addresses`
+- **Method**: `GET`
+- **Description**: Gives list of NFT WL addresses.
+
+
 ### Check Quest
 
 - **URL**: `/check-quest`
