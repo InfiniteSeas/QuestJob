@@ -12,7 +12,13 @@ const {
   checkFaucetForDailyQuest,
   checkCombatToPVEForDailyQuest,
   checkCombatToPVPForDailyQuest,
+  checkCraftForDailyQuestBatch,
+  checkFaucetForDailyQuestBatch,
+  checkCombatToPVEForDailyQuestBatch,
+  checkCombatToPVPForDailyQuestBatch,
+  getWalletsFromWhitelist,
   getPlayerNameByAddress,
+  getPlayerNamesByAddresses,
 } = require("./services/questService");
 const { runNewbieQuestsForPlayer } = require("./services/newbieQuestService");
 const {
@@ -20,6 +26,11 @@ const {
   checkFaucetForDailyQuestNft,
   checkCombatToPVEForDailyQuestNft,
   checkCombatToPVPForDailyQuestNft,
+  checkCraftForDailyQuestNftBatch,
+  checkFaucetForDailyQuestNftBatch,
+  checkCombatToPVEForDailyQuestNftBatch,
+  checkCombatToPVPForDailyQuestNftBatch,
+  getIdAndWalletsFromNFT,
 } = require("./services/questServiceNft");
 const {
   runNewbieQuestsForPlayerNft,
@@ -29,7 +40,7 @@ const app = express();
 
 const NFT = require("./models/nft"); // Ensure you import the NFT model
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3002;
 
 // TODO: ADD Sailing on daily
 
@@ -399,15 +410,55 @@ app.get("/get-all-newplayer-quests-nft", async (req, res) => {
   }
 });
 
-app.get("/get-names-and-points", async (req, res) => {
+app.get("/get-leaderboard", async (req, res) => {
   try {
+    // Fetch NFT data and wallet data
+    const nftData = await getIdAndWalletsFromNFT();
+
+    // Extract the addresses and get player names
+    const walletAddresses = nftData.map(({ owner }) => owner);
+    const playerNamesMapNft = await getPlayerNamesByAddresses(walletAddresses);
+
+    // Create the player address and NFT list with names
+    const playerAddrNftList = nftData.map(({ owner, id }) => ({
+      playerAddr: owner,
+      nft_id: id,
+      playerName: playerNamesMapNft[owner] || "",
+    }));
+
+    const wallets = await getWalletsFromWhitelist();
+    // Get player names for the wallets
+    const playerNamesMap = await getPlayerNamesByAddresses(wallets);
+
+    // Create the player address list with names
+    const playerAddrList = wallets.map((wallet) => ({
+      playerAddr: wallet,
+      playerName: playerNamesMap[wallet] || "",
+    }));
+
+    // Call all batch functions for NFT quests
+    await Promise.all([
+      checkCraftForDailyQuestNftBatch(playerAddrNftList),
+      checkFaucetForDailyQuestNftBatch(playerAddrNftList),
+      checkCombatToPVEForDailyQuestNftBatch(playerAddrNftList),
+      checkCombatToPVPForDailyQuestNftBatch(playerAddrNftList),
+    ]);
+
+    // Call all batch functions for non-NFT quests
+    await Promise.all([
+      checkCraftForDailyQuestBatch(playerAddrList),
+      checkFaucetForDailyQuestBatch(playerAddrList),
+      checkCombatToPVEForDailyQuestBatch(playerAddrList),
+      checkCombatToPVPForDailyQuestBatch(playerAddrList),
+    ]);
+
     // Aggregate points based on wallet for QuestProgress and NewPlayerQuest
     const dailyPoints = await QuestProgress.aggregate([
       {
         $group: {
           _id: "$wallet",
           totalRewardPoints: { $sum: "$totalRewardPoints" },
-          playerName: { $first: "$playerName" },
+          playerName: { $first: "$playerName" }, // Get the playerName from the first entry
         },
       },
     ]);
@@ -417,7 +468,7 @@ app.get("/get-names-and-points", async (req, res) => {
         $group: {
           _id: "$wallet",
           totalRewardPoints: { $sum: "$totalRewardPoints" },
-          playerName: { $first: "$playerName" },
+          playerName: { $first: "$playerName" }, // Get the playerName from the first entry
         },
       },
     ]);
@@ -428,7 +479,7 @@ app.get("/get-names-and-points", async (req, res) => {
         $group: {
           _id: "$nft_id",
           totalRewardPoints: { $sum: "$totalRewardPoints" },
-          playerName: { $first: "$playerName" },
+          playerName: { $first: "$playerName" }, // Get the playerName from the first entry
         },
       },
     ]);
@@ -438,7 +489,7 @@ app.get("/get-names-and-points", async (req, res) => {
         $group: {
           _id: "$nft_id",
           totalRewardPoints: { $sum: "$totalRewardPoints" },
-          playerName: { $first: "$playerName" },
+          playerName: { $first: "$playerName" }, // Get the playerName from the first entry
         },
       },
     ]);
@@ -452,7 +503,7 @@ app.get("/get-names-and-points", async (req, res) => {
         wallet: daily._id,
         totalRewardPoints:
           daily.totalRewardPoints + (newbie ? newbie.totalRewardPoints : 0),
-        playerName: daily.playerName || (newbie ? newbie.playerName : null),
+        playerName: daily.playerName,
       };
     });
 
@@ -478,8 +529,7 @@ app.get("/get-names-and-points", async (req, res) => {
         totalRewardPoints:
           dailyNft.totalRewardPoints +
           (newbieNft ? newbieNft.totalRewardPoints : 0),
-        playerName:
-          dailyNft.playerName || (newbieNft ? newbieNft.playerName : null),
+        playerName: dailyNft.playerName,
       };
     });
 
@@ -504,6 +554,112 @@ app.get("/get-names-and-points", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// app.get("/get-names-and-points", async (req, res) => {
+//   try {
+//     // Aggregate points based on wallet for QuestProgress and NewPlayerQuest
+//     const dailyPoints = await QuestProgress.aggregate([
+//       {
+//         $group: {
+//           _id: "$wallet",
+//           totalRewardPoints: { $sum: "$totalRewardPoints" },
+//           playerName: { $first: "$playerName" },
+//         },
+//       },
+//     ]);
+
+//     const newbiePoints = await NewPlayerQuest.aggregate([
+//       {
+//         $group: {
+//           _id: "$wallet",
+//           totalRewardPoints: { $sum: "$totalRewardPoints" },
+//           playerName: { $first: "$playerName" },
+//         },
+//       },
+//     ]);
+
+//     // Aggregate points based on nft_id for QuestProgressNft and NewPlayerQuestNft
+//     const dailyPointsNft = await QuestProgressNft.aggregate([
+//       {
+//         $group: {
+//           _id: "$nft_id",
+//           totalRewardPoints: { $sum: "$totalRewardPoints" },
+//           playerName: { $first: "$playerName" },
+//         },
+//       },
+//     ]);
+
+//     const newbiePointsNft = await NewPlayerQuestNft.aggregate([
+//       {
+//         $group: {
+//           _id: "$nft_id",
+//           totalRewardPoints: { $sum: "$totalRewardPoints" },
+//           playerName: { $first: "$playerName" },
+//         },
+//       },
+//     ]);
+
+//     // Combine dailyPoints and newbiePoints based on wallet
+//     const combinedWalletPoints = dailyPoints.map((daily) => {
+//       const newbie = newbiePoints.find(
+//         (newbie) => newbie._id.toString() === daily._id.toString()
+//       );
+//       return {
+//         wallet: daily._id,
+//         totalRewardPoints:
+//           daily.totalRewardPoints + (newbie ? newbie.totalRewardPoints : 0),
+//         playerName: daily.playerName || (newbie ? newbie.playerName : null),
+//       };
+//     });
+
+//     newbiePoints.forEach((newbie) => {
+//       if (
+//         !combinedWalletPoints.some((combined) => combined.wallet === newbie._id)
+//       ) {
+//         combinedWalletPoints.push({
+//           wallet: newbie._id,
+//           totalRewardPoints: newbie.totalRewardPoints,
+//           playerName: newbie.playerName,
+//         });
+//       }
+//     });
+
+//     // Combine dailyPointsNft and newbiePointsNft based on nft_id
+//     const combinedNftPoints = dailyPointsNft.map((dailyNft) => {
+//       const newbieNft = newbiePointsNft.find(
+//         (newbieNft) => newbieNft._id.toString() === dailyNft._id.toString()
+//       );
+//       return {
+//         nft_id: dailyNft._id,
+//         totalRewardPoints:
+//           dailyNft.totalRewardPoints +
+//           (newbieNft ? newbieNft.totalRewardPoints : 0),
+//         playerName:
+//           dailyNft.playerName || (newbieNft ? newbieNft.playerName : null),
+//       };
+//     });
+
+//     newbiePointsNft.forEach((newbieNft) => {
+//       if (
+//         !combinedNftPoints.some((combined) => combined.nft_id === newbieNft._id)
+//       ) {
+//         combinedNftPoints.push({
+//           nft_id: newbieNft._id,
+//           totalRewardPoints: newbieNft.totalRewardPoints,
+//           playerName: newbieNft.playerName,
+//         });
+//       }
+//     });
+
+//     // Combine both wallet and nft results into a single array
+//     const combinedPoints = [...combinedWalletPoints, ...combinedNftPoints];
+
+//     res.json(combinedPoints);
+//   } catch (error) {
+//     logger.error(`Error getting wallets and points: ${error.message}`);
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
 // app.get("/get-wallets-and-points", async (req, res) => {
 //   try {
