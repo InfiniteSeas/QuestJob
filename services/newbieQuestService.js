@@ -14,26 +14,9 @@ const getUnixTimestamp = (
   return Date.UTC(year, month - 1, day, hour, minute, second);
 };
 
-// Current date
-const currentDate = new Date();
-const currentYear = currentDate.getUTCFullYear();
-const currentMonth = currentDate.getUTCMonth() + 1; // getUTCMonth() returns month from 0-11
-const currentDay = currentDate.getUTCDate();
-const currentHour = currentDate.getUTCHours();
-const currentMin = currentDate.getUTCMinutes();
-const currentSec = currentDate.getUTCSeconds();
-
 // August 8th, 2024 timestamp
 const startAt = getUnixTimestamp(2024, 8, 8, 0, 0, 0);
 // Current timestamp
-const endedAt = getUnixTimestamp(
-  currentYear,
-  currentMonth,
-  currentDay,
-  currentHour,
-  currentMin,
-  currentSec
-);
 
 const INDEXER_BASE_URL = process.env.INDEXER_BASE_URL || "";
 
@@ -87,12 +70,12 @@ async function updateQuestProgressInDB(
   });
 
   if (!questProgress) {
-    if (!playerName) {
-      logger.info(
-        `Skipping creation of quest progress for ${playerAddr} - ${questName} as playerName is not provided`
-      );
-      return;
-    }
+    // if (!playerName) {
+    //   logger.info(
+    //     `Skipping creation of quest progress for ${playerAddr} - ${questName} as playerName is not provided`
+    //   );
+    //   return;
+    // }
 
     await NewPlayerQuest.create({
       wallet: playerAddr,
@@ -195,6 +178,24 @@ async function checkFirst4Craft(playerAddr, playerName) {
     return;
   }
 
+  // Current date
+  const currentDate = new Date();
+  const currentYear = currentDate.getUTCFullYear();
+  const currentMonth = currentDate.getUTCMonth() + 1; // getUTCMonth() returns month from 0-11
+  const currentDay = currentDate.getUTCDate();
+  const currentHour = currentDate.getUTCHours();
+  const currentMin = currentDate.getUTCMinutes();
+  const currentSec = currentDate.getUTCSeconds();
+
+  const endedAt = getUnixTimestamp(
+    currentYear,
+    currentMonth,
+    currentDay,
+    currentHour,
+    currentMin,
+    currentSec
+  );
+
   try {
     const { data: craftRecords } = await axios.get(
       `${INDEXER_BASE_URL}/contractEvents/getShipProductionCompletedEvents`,
@@ -228,6 +229,25 @@ async function checkFirstPveWin(playerAddr, playerName) {
     logger.info(`Quest 'firstPveWin' already completed for ${playerAddr}`);
     return;
   }
+
+  // Current date
+  const currentDate = new Date();
+  const currentYear = currentDate.getUTCFullYear();
+  const currentMonth = currentDate.getUTCMonth() + 1; // getUTCMonth() returns month from 0-11
+  const currentDay = currentDate.getUTCDate();
+  const currentHour = currentDate.getUTCHours();
+  const currentMin = currentDate.getUTCMinutes();
+  const currentSec = currentDate.getUTCSeconds();
+
+  const endedAt = getUnixTimestamp(
+    currentYear,
+    currentMonth,
+    currentDay,
+    currentHour,
+    currentMin,
+    currentSec
+  );
+
   try {
     const { data: combats } = await axios.get(
       `${INDEXER_BASE_URL}/contractEvents/getPlayerVsEnvironmentEvents`,

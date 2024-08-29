@@ -6,33 +6,25 @@ const logger = require("../lib/logger");
 const INDEXER_BASE_URL = process.env.INDEXER_BASE_URL || "";
 const MAP_ID = process.env.MAP_ID || "";
 
-const getUnixTimestamp = (
-  year,
-  month,
-  day,
-  hour = 0,
-  minute = 0,
-  second = 0
-) => {
-  return Date.UTC(year, month - 1, day, hour, minute, second);
-};
+// Function to get the current start and end timestamps
+function getStartAndEndTimestamps() {
+  const currentDate = new Date();
+  const currentYear = currentDate.getUTCFullYear();
+  const currentMonth = currentDate.getUTCMonth() + 1; // getUTCMonth() returns month from 0-11
+  const currentDay = currentDate.getUTCDate();
 
-// Current date
-const currentDate = new Date();
-const currentYear = currentDate.getUTCFullYear();
-const currentMonth = currentDate.getUTCMonth() + 1; // getUTCMonth() returns month from 0-11
-const currentDay = currentDate.getUTCDate();
+  const startAt = Date.UTC(currentYear, currentMonth - 1, currentDay, 0, 1); // 12:01 AM today UTC
+  const endedAt = Date.UTC(
+    currentYear,
+    currentMonth - 1,
+    currentDay + 1,
+    0,
+    0,
+    59
+  ); // 12:00:59 AM tomorrow UTC
 
-// Adjusted times to match the new reset period
-const startAt = getUnixTimestamp(currentYear, currentMonth, currentDay, 0, 1); // 12:01 AM today UTC
-const endedAt = getUnixTimestamp(
-  currentYear,
-  currentMonth,
-  currentDay + 1,
-  0,
-  0,
-  59
-); // 12:00:59 AM tomorrow UTC
+  return { startAt, endedAt };
+}
 
 const getRewardPoints = (questName) => {
   switch (questName) {
@@ -73,13 +65,6 @@ async function updateQuestProgressInDB(
   });
 
   if (!questProgress) {
-    if (!playerName) {
-      logger.info(
-        `Skipping creation of quest progress for ${playerAddr} - ${questName} as playerName is not provided`
-      );
-      return;
-    }
-
     await QuestProgress.create({
       wallet: playerAddr,
       questName,
@@ -119,6 +104,28 @@ async function getWalletsFromWhitelist() {
   }
 }
 
+async function getPlayerNamesByAddresses(playerAddrs) {
+  try {
+    // Fetch all players
+    const { data: players } = await axios.get(`${INDEXER_BASE_URL}/Players`);
+
+    // Create a map of player addresses to player names
+    const playerNamesMap = playerAddrs.reduce((acc, addr) => {
+      const player = players.find((p) => p.owner === addr);
+      acc[addr] = player ? player.name || "" : "";
+      return acc;
+    }, {});
+
+    return playerNamesMap; // Return the map of player addresses to player names
+  } catch (error) {
+    logger.error(`Error retrieving player names: ${error.message}`);
+    return playerAddrs.reduce((acc, addr) => {
+      acc[addr] = "";
+      return acc;
+    }, {}); // Return a map with empty strings if an error occurs
+  }
+}
+
 async function getPlayerNameByAddress(playerAddr) {
   try {
     const { data: players } = await axios.get(`${INDEXER_BASE_URL}/Players`, {
@@ -143,6 +150,8 @@ async function getPlayerNameByAddress(playerAddr) {
 }
 
 async function checkCraftForDailyQuest(playerAddr, playerName) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
   if (await isQuestCompletedToday(playerAddr, "craft_ships")) {
     logger.info(
       `Quest 'craft_ships' already completed today for ${playerAddr}`
@@ -179,6 +188,8 @@ async function checkCraftForDailyQuest(playerAddr, playerName) {
 }
 
 async function checkFaucetForDailyQuest(playerAddr, playerName) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
   if (await isQuestCompletedToday(playerAddr, "claim_energy")) {
     logger.info(
       `Quest 'claim_energy' already completed today for ${playerAddr}`
@@ -216,6 +227,8 @@ async function checkFaucetForDailyQuest(playerAddr, playerName) {
 }
 
 async function checkCombatToPVEForDailyQuest(playerAddr, playerName) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
   if (await isQuestCompletedToday(playerAddr, "battle_pve")) {
     logger.info(`Quest 'battle_pve' already completed today for ${playerAddr}`);
     return;
@@ -250,6 +263,8 @@ async function checkCombatToPVEForDailyQuest(playerAddr, playerName) {
 }
 
 async function checkCombatToPVPForDailyQuest(playerAddr, playerName) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
   if (await isQuestCompletedToday(playerAddr, "battle_pvp")) {
     logger.info(`Quest 'battle_pvp' already completed today for ${playerAddr}`);
     return;
@@ -286,11 +301,216 @@ async function checkCombatToPVPForDailyQuest(playerAddr, playerName) {
   }
 }
 
+async function checkCraftForDailyQuestBatch(playerAddrList) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
+  const senderAddresses = playerAddrList.map(({ playerAddr }) => playerAddr);
+
+  try {
+    const { data: craftRecords } = await axios.post(
+      `${INDEXER_BASE_URL}/contractEvents/batchShipProductionCompletedEvents`,
+      {
+        startAt,
+        endAt: endedAt,
+        senderAddresses,
+      }
+    );
+
+    const senderCountMap = craftRecords.reduce((acc, record) => {
+      const { suiSender } = record;
+      acc[suiSender] = (acc[suiSender] || 0) + 1;
+      return acc;
+    }, {});
+
+    for (const { playerAddr, playerName } of playerAddrList) {
+      if (await isQuestCompletedToday(playerAddr, "craft_ships")) {
+        logger.info(
+          `Quest 'craft_ships' already completed today for ${playerAddr}`
+        );
+        continue;
+      }
+
+      const completed = senderCountMap[playerAddr] >= 4;
+      const points = completed ? getRewardPoints("craft_ships") : 0;
+
+      await updateQuestProgressInDB(
+        playerAddr,
+        "craft_ships",
+        points,
+        completed,
+        playerName
+      );
+    }
+
+    logger.info("Batch ship production quest progress updated for all players");
+  } catch (error) {
+    logger.error(
+      `Error checking batch ship production quests: ${error.message}`
+    );
+  }
+}
+
+async function checkFaucetForDailyQuestBatch(playerAddrList) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
+  const senderAddresses = playerAddrList.map(({ playerAddr }) => playerAddr);
+
+  try {
+    const { data: faucetRecords } = await axios.post(
+      `${INDEXER_BASE_URL}/contractEvents/batchFaucetRequestedEvents`,
+      {
+        startAt,
+        endAt: endedAt,
+        senderAddresses,
+      }
+    );
+
+    for (const { playerAddr, playerName } of playerAddrList) {
+      if (await isQuestCompletedToday(playerAddr, "claim_energy")) {
+        logger.info(
+          `Quest 'claim_energy' already completed today for ${playerAddr}`
+        );
+        continue;
+      }
+
+      const completed = faucetRecords.some(
+        (record) => record.suiSender === playerAddr
+      );
+      const points = completed ? getRewardPoints("claim_energy") : 0;
+
+      await updateQuestProgressInDB(
+        playerAddr,
+        "claim_energy",
+        points,
+        completed,
+        playerName
+      );
+    }
+
+    logger.info("Batch faucet quest progress updated for all players");
+  } catch (error) {
+    logger.error(`Error checking batch faucet quests: ${error.message}`);
+  }
+}
+
+async function checkCombatToPVEForDailyQuestBatch(playerAddrList) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
+  const senderAddresses = playerAddrList.map(({ playerAddr }) => playerAddr);
+
+  try {
+    const { data: combats } = await axios.post(
+      `${INDEXER_BASE_URL}/contractEvents/batchGetPlayerVsEnvironmentEvents`,
+      {
+        startAt,
+        endAt: endedAt,
+        senderAddresses,
+      }
+    );
+
+    const senderCountMap = combats.reduce((acc, record) => {
+      const { suiSender, winner } = record;
+      if (winner === 1) {
+        acc[suiSender] = (acc[suiSender] || 0) + 1;
+      }
+      return acc;
+    }, {});
+
+    for (const { playerAddr, playerName } of playerAddrList) {
+      if (await isQuestCompletedToday(playerAddr, "battle_pve")) {
+        logger.info(
+          `Quest 'battle_pve' already completed today for ${playerAddr}`
+        );
+        continue;
+      }
+
+      const completed = senderCountMap[playerAddr] >= 3;
+      const points = completed ? getRewardPoints("battle_pve") : 0;
+
+      await updateQuestProgressInDB(
+        playerAddr,
+        "battle_pve",
+        points,
+        completed,
+        playerName
+      );
+    }
+
+    logger.info("Batch PVE combat quest progress updated for all players");
+  } catch (error) {
+    logger.error(`Error checking batch PVE combat quests: ${error.message}`);
+  }
+}
+
+async function checkCombatToPVPForDailyQuestBatch(playerAddrList) {
+  const { startAt, endedAt } = getStartAndEndTimestamps();
+
+  const senderAddresses = playerAddrList.map(({ playerAddr }) => playerAddr);
+
+  try {
+    const { data: combats } = await axios.post(
+      `${INDEXER_BASE_URL}/contractEvents/batchGetPlayerVsPlayerEvents`,
+      {
+        startAt,
+        endAt: endedAt,
+        senderAddresses,
+      }
+    );
+
+    const senderCountMap = combats.reduce((acc, record) => {
+      const {
+        suiSender,
+        initiatorSenderAddress,
+        responderSenderAddress,
+        winner,
+      } = record;
+
+      if (
+        (initiatorSenderAddress === suiSender && winner === 1) ||
+        (responderSenderAddress === suiSender && winner === 0)
+      ) {
+        acc[suiSender] = (acc[suiSender] || 0) + 1;
+      }
+
+      return acc;
+    }, {});
+
+    for (const { playerAddr, playerName } of playerAddrList) {
+      if (await isQuestCompletedToday(playerAddr, "battle_pvp")) {
+        logger.info(
+          `Quest 'battle_pvp' already completed today for ${playerAddr}`
+        );
+        continue;
+      }
+
+      const completed = senderCountMap[playerAddr] >= 1;
+      const points = completed ? getRewardPoints("battle_pvp") : 0;
+
+      await updateQuestProgressInDB(
+        playerAddr,
+        "battle_pvp",
+        points,
+        completed,
+        playerName
+      );
+    }
+
+    logger.info("Batch PVP combat quest progress updated for all players");
+  } catch (error) {
+    logger.error(`Error checking batch PVP combat quests: ${error.message}`);
+  }
+}
+
 module.exports = {
   checkCraftForDailyQuest,
+  checkCraftForDailyQuestBatch,
   checkFaucetForDailyQuest,
+  checkFaucetForDailyQuestBatch,
   checkCombatToPVEForDailyQuest,
+  checkCombatToPVEForDailyQuestBatch,
   checkCombatToPVPForDailyQuest,
+  checkCombatToPVPForDailyQuestBatch,
   getWalletsFromWhitelist,
   getPlayerNameByAddress,
+  getPlayerNamesByAddresses,
 };
