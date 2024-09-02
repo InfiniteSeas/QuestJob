@@ -138,9 +138,9 @@ const resetQuestNftProgress = async () => {
 cron.schedule("2 0 * * *", resetQuestProgress);
 cron.schedule("2 0 * * *", resetQuestNftProgress);
 
-// Schedule the cron job to run every 30 minutes, starting at 2 minutes past the hour
-cron.schedule("2/5 * * * *", updateQuestProgress);
-cron.schedule("2/5 * * * *", updateQuestNftProgress);
+// Schedule the cron job to run every 5 minutes, starting at 2 minutes past the hour
+cron.schedule("*/5 * * * *", updateQuestProgress);
+cron.schedule("*/5 * * * *", updateQuestNftProgress);
 
 // This will run the job every 2 minutes
 // cron.schedule("*/2 * * * *", updateQuestProgress);
