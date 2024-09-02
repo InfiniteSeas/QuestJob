@@ -423,45 +423,45 @@ app.get("/get-all-newplayer-quests-nft", async (req, res) => {
 
 app.get("/get-leaderboard", async (req, res) => {
   try {
-    // Fetch NFT data and wallet data
-    const nftData = await getIdAndWalletsFromNFT();
+    // // Fetch NFT data and wallet data
+    // const nftData = await getIdAndWalletsFromNFT();
 
-    // Extract the addresses and get player names
-    const walletAddresses = nftData.map(({ owner }) => owner);
-    const playerNamesMapNft = await getPlayerNamesByAddresses(walletAddresses);
+    // // Extract the addresses and get player names
+    // const walletAddresses = nftData.map(({ owner }) => owner);
+    // const playerNamesMapNft = await getPlayerNamesByAddresses(walletAddresses);
 
-    // Create the player address and NFT list with names
-    const playerAddrNftList = nftData.map(({ owner, id }) => ({
-      playerAddr: owner,
-      nft_id: id,
-      playerName: playerNamesMapNft[owner] || "",
-    }));
+    // // Create the player address and NFT list with names
+    // const playerAddrNftList = nftData.map(({ owner, id }) => ({
+    //   playerAddr: owner,
+    //   nft_id: id,
+    //   playerName: playerNamesMapNft[owner] || "",
+    // }));
 
-    const wallets = await getWalletsFromWhitelist();
-    // Get player names for the wallets
-    const playerNamesMap = await getPlayerNamesByAddresses(wallets);
+    // const wallets = await getWalletsFromWhitelist();
+    // // Get player names for the wallets
+    // const playerNamesMap = await getPlayerNamesByAddresses(wallets);
 
-    // Create the player address list with names
-    const playerAddrList = wallets.map((wallet) => ({
-      playerAddr: wallet,
-      playerName: playerNamesMap[wallet] || "",
-    }));
+    // // Create the player address list with names
+    // const playerAddrList = wallets.map((wallet) => ({
+    //   playerAddr: wallet,
+    //   playerName: playerNamesMap[wallet] || "",
+    // }));
 
-    // Call all batch functions for NFT quests
-    await Promise.all([
-      checkCraftForDailyQuestNftBatch(playerAddrNftList),
-      checkFaucetForDailyQuestNftBatch(playerAddrNftList),
-      checkCombatToPVEForDailyQuestNftBatch(playerAddrNftList),
-      checkCombatToPVPForDailyQuestNftBatch(playerAddrNftList),
-    ]);
+    // // Call all batch functions for NFT quests
+    // await Promise.all([
+    //   checkCraftForDailyQuestNftBatch(playerAddrNftList),
+    //   checkFaucetForDailyQuestNftBatch(playerAddrNftList),
+    //   checkCombatToPVEForDailyQuestNftBatch(playerAddrNftList),
+    //   checkCombatToPVPForDailyQuestNftBatch(playerAddrNftList),
+    // ]);
 
-    // Call all batch functions for non-NFT quests
-    await Promise.all([
-      checkCraftForDailyQuestBatch(playerAddrList),
-      checkFaucetForDailyQuestBatch(playerAddrList),
-      checkCombatToPVEForDailyQuestBatch(playerAddrList),
-      checkCombatToPVPForDailyQuestBatch(playerAddrList),
-    ]);
+    // // Call all batch functions for non-NFT quests
+    // await Promise.all([
+    //   checkCraftForDailyQuestBatch(playerAddrList),
+    //   checkFaucetForDailyQuestBatch(playerAddrList),
+    //   checkCombatToPVEForDailyQuestBatch(playerAddrList),
+    //   checkCombatToPVPForDailyQuestBatch(playerAddrList),
+    // ]);
 
     // Aggregate points based on wallet for QuestProgress and NewPlayerQuest
     const dailyPoints = await QuestProgress.aggregate([
