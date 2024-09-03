@@ -144,7 +144,7 @@ async function checkCraftForDailyQuestNft(playerAddr, nft_id, playerName) {
 }
 
 async function checkFaucetForDailyQuestNft(playerAddr, nft_id, playerName) {
-  const { startAt, endedAt } = getStartAndEndTtimestamps();
+  const { startAt, endedAt } = getStartAndEndTimestamps();
 
   if (await isQuestCompletedToday(nft_id, "claim_energy")) {
     logger.info(
